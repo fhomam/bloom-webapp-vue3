@@ -1,0 +1,238 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import * as api from '@/services/api'
+import sortBy from 'lodash/sortBy'
+
+// ==========================================
+// 1. PURE MATH & UTILITIES (From bloomlib.js)
+// ==========================================
+const JOY_FACTOR = 3;
+const CONFIDENCE_FACTOR = 2;
+const ENGAGEMENT_FACTOR = 1;
+const FRUSTRATION_FACTOR = -1.5;
+const HOPELESSNESS_FACTOR = -3;
+const CONTENTION_THRESHOLD = 10;
+
+function getJoyMetrics(bloom) {
+  let joyMetrics = { reviewsAnalyzed: 0, joy: 0, confidence: 0, engagement: 0, frustration: 0, hopelessness: 0 };
+  if (!bloom || !bloom.categories) return joyMetrics;
+
+  bloom.categories.forEach(category => {
+    category.topics.forEach(topic => {
+      topic.issues.forEach(issue => {
+        issue.interactions.forEach(interaction => {
+          if (interaction.analysis && interaction.analysis.joy) {
+            joyMetrics['reviewsAnalyzed']++;
+            interaction.analysis.joy.forEach((entry) => {
+              joyMetrics[entry.metric]++;
+            });
+          }
+        });
+      });
+    });
+  });
+  return joyMetrics;
+}
+
+function calculateJoyScore(joyMetrics) {
+  const totalExpression = joyMetrics.joy + joyMetrics.confidence + joyMetrics.engagement + joyMetrics.frustration + joyMetrics.hopelessness;
+  if (totalExpression === 0) return 0;
+
+  const score = 
+    ((joyMetrics.joy / totalExpression) * JOY_FACTOR) +
+    ((joyMetrics.confidence / totalExpression) * CONFIDENCE_FACTOR) +
+    ((joyMetrics.engagement / totalExpression) * ENGAGEMENT_FACTOR) +
+    ((joyMetrics.frustration / totalExpression) * FRUSTRATION_FACTOR) +
+    ((joyMetrics.hopelessness / totalExpression) * HOPELESSNESS_FACTOR);
+  
+  return score;
+}
+
+function getJoyScoreDescription(score, reviewCount) {
+  if (score < -2.5) return "Mostly Hopeless";
+  if (score < -1.5) return "Leaning Hopeless";
+  if (score < -0.5) return "Mostly Frustrated";
+  if (score >= -0.5 && score <= 0.5) return (reviewCount >= CONTENTION_THRESHOLD) ? "Contentious" : "Inconclusive";
+  if (score > 0.5 && score <= 1) return "Leaning Engaged";
+  if (score > 1 && score <= 1.5) return "Positively Engaged";
+  if (score > 1.5 && score <= 2) return "Leaning Confident";
+  if (score > 2 && score <= 2.5) return "Confident";
+  if (score > 2.5 && score <= 3) return "Joyful";
+  return "Unknown";
+}
+
+// Generates the stats needed for sorting (most reviews, newest, oldest)
+function calculateInteractionStats(categories) {
+  const taxoStats = {}; 
+  if (!categories) return taxoStats;
+
+  categories.forEach((category) => {
+    category.topics.forEach((topic) => {
+      topic.issues.forEach((issue) => {
+        const interactionCount = issue.interactions?.length || 0;
+        
+        let latestMs = 0;
+        let oldestMs = Date.now();
+        let upvoteCount = 0;
+
+        if (issue.interactions) {
+          issue.interactions.forEach(interaction => {
+            const timestamp = new Date(interaction.updatedAtSource || interaction.createdAt).getTime();
+            if (timestamp > latestMs) latestMs = timestamp;
+            if (timestamp < oldestMs) oldestMs = timestamp;
+            
+            if (interaction.reactions) {
+              const upvote = interaction.reactions.find(r => r.type === 'upvote');
+              if (upvote) upvoteCount += upvote.count;
+            }
+          });
+        }
+
+        const now = Date.now();
+        taxoStats[issue.taxo] = {
+          interactionCount,
+          upvoteCount,
+          latestInteractionMsAgo: latestMs ? now - latestMs : 999999999999,
+          oldestInteractionMsAgo: oldestMs !== now ? now - oldestMs : 0
+        };
+      });
+    });
+  });
+  return taxoStats;
+}
+
+// ==========================================
+// 2. THE PINIA STORE
+// ==========================================
+export const useBloomStore = defineStore('bloom', () => {
+  
+  // --- STATE ---
+  const currentBloom = ref(null)
+  const offeringContext = ref(null)
+  const themes = ref([])
+  const countryReviewStats = ref(null) // <-- ADDED
+  const sourcesWithVersion = ref(null) // <-- ADDED
+  const isLoading = ref(false)
+  const error = ref(null)
+
+  // --- GETTERS ---
+  
+  // 1. Flattened Issues Array with injected Category/Topic data
+  const allIssues = computed(() => {
+    if (!currentBloom.value || !currentBloom.value.categories) return []
+    let issues = []
+    currentBloom.value.categories.forEach(category => {
+      category.topics.forEach(topic => {
+        topic.issues.forEach(issue => {
+          issues.push({ ...issue, topicTitle: topic.title, categoryTitle: category.title })
+        })
+      })
+    })
+    return issues
+  })
+
+  // 2. Joy Score Engine
+  const joyStats = computed(() => {
+    if (!currentBloom.value) return null;
+    const metrics = getJoyMetrics(currentBloom.value);
+    const score = calculateJoyScore(metrics);
+    const scoreDescription = getJoyScoreDescription(score, metrics.reviewsAnalyzed);   
+    return { metrics, score, scoreDescription };
+  })
+
+  // 3. Taxonomy Stats (for sorting)
+  const taxoStats = computed(() => {
+    return calculateInteractionStats(currentBloom.value?.categories);
+  })
+
+  // 4. The Master Filter & Sort Getter (Consumes URL Queries!)
+  const getFilteredAndSortedIssues = computed(() => {
+    return (query) => {
+      let result = [...allIssues.value];
+      const stats = taxoStats.value;
+
+      // Filter: Search Query
+      if (query.search) {
+        const lowerSearch = query.search.toLowerCase();
+        result = result.filter(issue => {
+          const inTitle = issue.title?.toLowerCase().includes(lowerSearch);
+          const inSummary = issue.description?.summary?.toLowerCase().includes(lowerSearch);
+          const inEntries = issue.description?.entries?.some(e => e.toLowerCase().includes(lowerSearch));
+          const inTaxo = issue.topicTitle?.toLowerCase().includes(lowerSearch) || issue.categoryTitle?.toLowerCase().includes(lowerSearch);
+          return inTitle || inSummary || inEntries || inTaxo;
+        });
+      }
+
+      // Filter: Taxonomy
+      if (query.taxo) {
+        const searchTaxo = query.taxo.replaceAll('-', ':');
+        result = result.filter(issue => issue.taxo.startsWith(searchTaxo));
+      }
+
+      // Filter: Theme
+      if (query.theme && query.theme !== 'all') {
+        result = result.filter(issue => issue.themes?.some(t => t.themeId === query.theme));
+      }
+
+      // Sort
+      const sortType = query.sort || 'most-reviews';
+      
+      // Map stats into the issues temporarily for sorting
+      let sortableIssues = result.map(issue => ({
+        ...issue,
+        ...stats[issue.taxo]
+      }));
+
+      if (sortType === 'most-reviews') sortableIssues = sortBy(sortableIssues, 'interactionCount').reverse();
+      if (sortType === 'least-reviews') sortableIssues = sortBy(sortableIssues, 'interactionCount');
+      if (sortType === 'most-upvoted') sortableIssues = sortBy(sortableIssues, 'upvoteCount').reverse();
+      if (sortType === 'least-upvoted') sortableIssues = sortBy(sortableIssues, 'upvoteCount');
+      if (sortType === 'newest-reviews') sortableIssues = sortBy(sortableIssues, 'latestInteractionMsAgo');
+      if (sortType === 'oldest-reviews') sortableIssues = sortBy(sortableIssues, 'oldestInteractionMsAgo').reverse();
+
+      return sortableIssues;
+    }
+  })
+
+  // --- ACTIONS ---
+  async function loadReportData(payload) {
+    isLoading.value = true
+    error.value = null
+    try {
+      // Create the core params payload (dropping active filters) for stats calls
+      const corePayload = {
+        orgId: payload.orgId,
+        bloomKey: payload.bloomKey,
+        bloomType: payload.bloomType,
+        offeringXid: payload.offeringXid,
+        offeringType: 'app'
+      }
+
+      // Execute all 5 calls simultaneously 
+      const [bloomRes, contextRes, themesRes, countryRes, sourceRes] = await Promise.all([
+        api.getBloom({ ...payload, offeringType: 'app' }),
+        api.getAppOffering({ ...payload, offeringType: 'app' }),
+        api.getAllThemes({ ...payload, offeringType: 'app' }),
+        api.getBloomCountryReviewStats(corePayload),
+        api.getBloomSourcesWithVersion(corePayload)
+      ])
+      
+      currentBloom.value = bloomRes
+      offeringContext.value = contextRes
+      themes.value = themesRes
+      countryReviewStats.value = countryRes      // <-- Saved to state
+      sourcesWithVersion.value = sourceRes       // <-- Saved to state
+    } catch (err) {
+      console.error(err)
+      error.value = "Failed to load Bloom data."
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  return { 
+    currentBloom, offeringContext, themes, countryReviewStats, sourcesWithVersion, isLoading, error,
+    allIssues, joyStats, taxoStats, getFilteredAndSortedIssues,
+    loadReportData 
+  }
+})

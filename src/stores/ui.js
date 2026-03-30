@@ -9,6 +9,9 @@ export const useUiStore = defineStore('ui', () => {
   const isRightOpen = ref(false)
   const rightTabs = ref([]) 
   const activeRightTab = ref('')
+  
+  // NEW: Track the dynamic height of the top ribbon
+  const reportRibbonHeight = ref(0)
 
   // The "Magic" function pages will call to configure the sidebar
   function configureRightSidebar(tabs, defaultTab, autoOpen = false) {
@@ -28,6 +31,7 @@ export const useUiStore = defineStore('ui', () => {
     isRightOpen, 
     rightTabs, 
     activeRightTab, 
+    reportRibbonHeight,
     configureRightSidebar, 
     closeRightSidebar 
   }

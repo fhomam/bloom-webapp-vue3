@@ -3,14 +3,13 @@
     
     <div v-if="bloomStore.currentBloom" class="flex flex-col">
       
-      <div ref="topRibbonRef">
-        <ReportRibbon />
-      </div>
+      <ReportRibbon />  
 
-      <div class="sticky top-0 z-10 flex flex-col bg-white border-b border-slate-200 shadow-sm">
+      <div class="sticky top-0 z-10 flex flex-col bg-white border-b border-slate-200">
         
         <div 
-          class="grid transition-all duration-300 ease-in-out bg-slate-50"
+          class="grid bg-slate-50"
+          style="transition: grid-template-rows 300ms ease-in-out, opacity 300ms ease-in-out;"
           :class="isScrolled ? 'grid-rows-[1fr] opacity-100 border-b border-slate-200' : 'grid-rows-[0fr] opacity-0 border-b-0'"
         >
           <div class="overflow-hidden">
@@ -86,11 +85,6 @@ const router = useRouter()
 const bloomStore = useBloomStore()
 const ui = useUiStore()
 
-// --- SCROLL TRACKING (Intersection Observer) ---
-const isScrolled = ref(false)
-const topRibbonRef = ref(null)
-let observer = null
-
 // --- UTILITIES ---
 const formatNumber = (num) => (num || 0).toLocaleString('en-US')
 const appName = computed(() => bloomStore.offeringContext?.name || 'Loading...')
@@ -146,16 +140,32 @@ const themeOptions = computed(() => [
   ...(bloomStore.themes?.map(t => ({ id: t.themeId, label: t.name })) || [])
 ])
 
+// --- SCROLL TRACKING (Brute-Force Native Listener) ---
+const isScrolled = ref(false)
+let scrollContainer = null
+
+const handleScroll = () => {
+  if (scrollContainer) {
+    // Trigger EXACTLY when the dynamic ribbon scrolls out of view (fallback to 150 if 0)
+    const threshold = ui.reportRibbonHeight > 0 ? ui.reportRibbonHeight : 150
+    isScrolled.value = scrollContainer.scrollTop > threshold
+  }
+}
+
 // --- MOUNT ROUTINE ---
 onMounted(async () => {
-  // Setup Observer for the Ribbon wrapper
-  observer = new IntersectionObserver(([entry]) => {
-    isScrolled.value = !entry.isIntersecting
-  }, { root: null, threshold: 0 })
+  // 1. Grab the actual scrolling container from AppLayout.vue
+  scrollContainer = document.querySelector('main')
+  
+  if (scrollContainer) {
+    // 2. Attach the raw scroll listener
+    scrollContainer.addEventListener('scroll', handleScroll)
+    // 3. Fire it once immediately just in case they load halfway down the page
+    handleScroll()
+  }
 
-  if (topRibbonRef.value) observer.observe(topRibbonRef.value)
-
-  ui.configureRightSidebar([{ id: 'taxo', label: 'Taxonomy', icon: '' }], 'taxo', true)
+  // Sidebar defaults to closed
+  ui.configureRightSidebar([{ id: 'taxo', label: 'Taxonomy', icon: '' }], 'taxo', false)
   
   try {
     if (!bloomStore.currentBloom) {
@@ -167,13 +177,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (observer) observer.disconnect()
+  // Clean up the listener so we don't cause memory leaks when routing away
+  if (scrollContainer) {
+    scrollContainer.removeEventListener('scroll', handleScroll)
+  }
 })
 </script>
-
-<style scoped>
-.slide-fade-enter-active { transition: all 0.2s ease-out; }
-.slide-fade-leave-active { transition: all 0.2s ease-in; }
-/* Flattened the transform slightly to prevent weird layout shifts that can cause clipping */
-.slide-fade-enter-from, .slide-fade-leave-to { transform: translateY(-4px); opacity: 0; }
-</style>

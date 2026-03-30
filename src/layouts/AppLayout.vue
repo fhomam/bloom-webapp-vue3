@@ -27,8 +27,6 @@
       <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shrink-0 z-30 w-full">
         <div class="flex items-center gap-3">
           <button @click="ui.isLeftCollapsed = false" class="md:hidden text-slate-500 hover:text-slate-900 mr-2">☰</button>
-          <h2 class="text-sm font-semibold text-slate-800 truncate">Hilton Honors</h2>
-          <span class="hidden sm:inline-block px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-xs font-medium border border-slate-200">v2026.2.24</span>
         </div>
         
         <div class="flex items-center gap-4">

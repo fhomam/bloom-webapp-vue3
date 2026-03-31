@@ -10,7 +10,8 @@
           {{ issue.categoryTitle || 'General' }}
         </button>
         <span class="shrink-0">▸</span>
-        <button @click.stop="toggleTaxo(issue.taxo)" :class="['hover:text-bloom-primary transition-colors text-left truncate max-w-[150px] sm:max-w-none', isTaxoActive(issue.taxo) ? 'text-slate-800' : '']">
+        
+        <button @click.stop="toggleTopic" :class="['hover:text-bloom-primary transition-colors text-left truncate max-w-[150px] sm:max-w-none', isTaxoActive(getTopicTaxo) ? 'text-slate-800' : '']">
           {{ issue.topicTitle || 'Misc' }}
         </button>
       </div>
@@ -110,6 +111,9 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useUiStore } from '@/stores/ui'
+
+const ui = useUiStore()
 
 const props = defineProps({
   issue: { type: Object, required: true },
@@ -182,10 +186,20 @@ const daysAgo = computed(() => {
   return `${formatNumber(days)} days ago`
 })
 
-// SAFELY GET CATEGORY TAXO
+// SAFELY GET TAXO
 const getCategoryTaxo = computed(() => {
   if (props.issue.category?.taxo) return props.issue.category.taxo
   if (props.issue.taxo) return props.issue.taxo.split(':')[0]
+  return null
+})
+
+const getTopicTaxo = computed(() => {
+  if (props.issue.topic?.taxo) return props.issue.topic.taxo
+  if (props.issue.taxo) {
+    const parts = props.issue.taxo.split(':')
+    if (parts.length >= 2) return `${parts[0]}:${parts[1]}` // e.g., "other:all"
+    return props.issue.taxo
+  }
   return null
 })
 
@@ -200,13 +214,25 @@ const toggleTaxo = (taxo) => {
   if (!taxo) return
   const safeTaxo = taxo.replaceAll(':', '-')
   const newQuery = { ...route.query }
-  if (newQuery.taxo === safeTaxo) delete newQuery.taxo
-  else newQuery.taxo = safeTaxo
+  
+  if (newQuery.taxo === safeTaxo) {
+    delete newQuery.taxo
+  } else {
+    newQuery.taxo = safeTaxo
+    // Pops the sidebar open when they click the breadcrumb!
+    ui.isRightOpen = true 
+    ui.activeRightTab = 'taxonomy' 
+  }
+  
   router.push({ query: newQuery })
 }
 
 const toggleCategory = () => {
   toggleTaxo(getCategoryTaxo.value)
+}
+
+const toggleTopic = () => {
+  toggleTaxo(getTopicTaxo.value)
 }
 
 const toggleTheme = (themeId) => {

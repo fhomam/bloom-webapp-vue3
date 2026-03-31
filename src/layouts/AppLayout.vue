@@ -56,7 +56,7 @@
         </main>
 
         <div v-if="ui.isRightOpen" @click="ui.isRightOpen = false" class="fixed inset-0 bg-slate-900/20 z-30 lg:hidden backdrop-blur-sm"></div>
-
+        
         <aside 
           :class="[
             ui.isRightOpen ? 'translate-x-0' : 'translate-x-full lg:w-0',
@@ -71,7 +71,11 @@
           </div>
 
           <div class="flex-1 overflow-y-auto p-4 hide-scrollbar min-w-[320px]">
-             <div class="text-sm text-slate-500">Currently viewing: <strong class="text-slate-800">{{ ui.activeRightTab }}</strong> panel.</div>
+            <TaxonomyTree v-if="ui.activeRightTab === 'taxonomy' && route.name === 'BloomReport'" />
+            
+            <div v-else class="text-sm text-slate-500">
+              Currently viewing: <strong class="text-slate-800">{{ ui.activeRightTab }}</strong> panel.
+            </div>
           </div>
         </aside>
 
@@ -91,6 +95,7 @@ import * as api from '@/services/api'
 import DashboardIcon from '@/components/icons/DashboardIcon.vue'
 import ReportIcon from '@/components/icons/ReportIcon.vue'
 import PanelIcon from '@/components/icons/PanelIcon.vue'
+import TaxonomyTree from '@/components/bloom/TaxonomyTree.vue'
 
 const ui = useUiStore()
 const route = useRoute()
@@ -206,7 +211,7 @@ onMounted(async () => {
         const pType = latestReport.bloomType || 'quarterly'
         const pId = latestReport.bloomKey || '2026q1'
         
-        latestReportRoute.value = `/${org}/report/${type}/${xid}/${pType}/${pId}`
+        latestReportRoute.value = `/${org}/reports/${type}/${xid}/${pType}/${pId}`
       }
     }
   } catch (err) {

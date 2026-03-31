@@ -75,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
 import { useUiStore } from '@/stores/ui'
@@ -222,13 +222,32 @@ onMounted(() => {
   
   // 4. Initial check to load data
   loadDataIfNeeded()
+
+  // 5. Tell the UI store to build the Taxonomy tab for this specific page
+  // Check if someone shared a link with a pre-selected taxo
+  const shouldAutoOpen = !!route.query.taxo
+
+  ui.configureRightSidebar(
+    [
+      { 
+        id: 'taxonomy', 
+        label: 'Taxonomy', 
+        icon: `<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="3"></circle><circle cx="19" cy="5" r="3"></circle><circle cx="19" cy="19" r="3"></circle><path d="M8 12h4"></path><path d="M12 5v14"></path><path d="M12 5h4"></path><path d="M12 19h4"></path></svg>`
+      }
+    ],
+    'taxonomy', 
+    shouldAutoOpen
+  )
 })
 
 onUnmounted(() => {
-  // Clean up the listener so we don't cause memory leaks when routing away
+  // 1. Clean up the listener so we don't cause memory leaks when routing away
   if (scrollContainer) {
     scrollContainer.removeEventListener('scroll', handleScroll)
   }
+
+  // 2. Clean up the sidebar when the user leaves the report!
+  ui.configureRightSidebar([], '', false)
 })
 </script>
 

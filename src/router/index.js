@@ -16,12 +16,7 @@ const router = createRouter({
           component: DashboardView
         },
         {
-          path: '/report',
-          name: 'bloom-report',
-          component: BloomReportView
-        },
-        {
-          path: '/:orgXid/report/:offeringType/:offeringXid/:periodType/:periodId',
+          path: '/:orgXid/reports/:offeringType/:offeringXid/:periodType/:periodId',
           name: 'BloomReport',
           component: () => import('@/views/BloomReportView.vue')
         }        

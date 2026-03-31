@@ -16,8 +16,6 @@
             <div class="px-6 lg:px-10 py-2.5 flex items-center justify-between">
               
               <div class="flex flex-wrap items-center gap-3 text-[13px] font-medium text-slate-600">
-                <span class="font-bold text-slate-900">{{ appName }}</span>
-                <span class="text-slate-300 hidden sm:inline">|</span>
                 <span class="font-bold uppercase">{{ activePeriodLabel }}</span>
                 <span class="text-slate-300 hidden sm:inline">|</span>
                 <span>{{ formatNumber(bloomStore.joyStats?.metrics?.reviewsAnalyzed) }} Reviews</span>
@@ -70,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
 import { useUiStore } from '@/stores/ui'
@@ -152,8 +150,38 @@ const handleScroll = () => {
   }
 }
 
+// --- DYNAMIC DATA LOADING ---
+const loadDataIfNeeded = async () => {
+  // Prevent fetch if we navigate entirely away from the report view
+  if (!route.params.offeringXid) return
+
+  // Check if store already matches the URL
+  const isCorrectDataLoaded = 
+    bloomStore.currentBloom?.offeringXid === route.params.offeringXid &&
+    bloomStore.currentBloom?.bloomKey === (route.params.periodId || '2026q1')
+
+  if (!isCorrectDataLoaded) {
+    try {
+      await bloomStore.loadReportData({ 
+        orgId: route.params.orgXid || 'org_1', // Fallback just in case
+        offeringXid: route.params.offeringXid, 
+        bloomType: route.params.periodType || 'quarterly', 
+        bloomKey: route.params.periodId || '2026q1'
+      })
+    } catch (err) {
+      console.error("Bloom Data failed to load:", err)
+    }
+  }
+}
+
+// Watch the route parameters. If they change, trigger a fresh data load!
+watch(
+  () => [route.params.offeringXid, route.params.periodId], 
+  () => { loadDataIfNeeded() }
+)
+
 // --- MOUNT ROUTINE ---
-onMounted(async () => {
+onMounted(() => {
   // 1. Grab the actual scrolling container from AppLayout.vue
   scrollContainer = document.querySelector('main')
   
@@ -167,13 +195,8 @@ onMounted(async () => {
   // Sidebar defaults to closed
   ui.configureRightSidebar([{ id: 'taxo', label: 'Taxonomy', icon: '' }], 'taxo', false)
   
-  try {
-    if (!bloomStore.currentBloom) {
-      await bloomStore.loadReportData({ orgId: 'org_1', offeringXid: 'r.hilton.hhonors', bloomKey: '2026q1', bloomType: 'quarterly' })
-    }
-  } catch (err) {
-    console.error("Bloom Data failed to load:", err)
-  }
+  // 4. Initial check to load data
+  loadDataIfNeeded()
 })
 
 onUnmounted(() => {

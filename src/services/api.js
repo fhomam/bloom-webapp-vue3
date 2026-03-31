@@ -34,3 +34,9 @@ export async function getAllThemes(payload) {
    const response = await appClient.post(`/api/v1/get/themes`, payload);
    return response.data.value || response.data;
 }
+
+export const getAvailableBlooms = async () => {
+   const response = await appClient.post('/api/v1/get/available/blooms')
+   return response.data.value || response.data
+}
+

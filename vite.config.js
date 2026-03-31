@@ -20,7 +20,8 @@ export default defineConfig({
   server: {
     port: 8082,
     strictPort: true, 
-    host: 'app.withbloom.localhost'
+    host: 'app.withbloom.localhost',
+    hmr: false
   },
   build: { 
     outDir: '../../../core/dist/bloom-webapp'

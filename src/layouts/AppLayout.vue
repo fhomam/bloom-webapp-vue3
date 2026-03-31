@@ -16,22 +16,36 @@
 
       <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-2 px-3 hide-scrollbar">
         <RouterLink to="/" class="group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative" active-class="bg-slate-800 text-white">
-          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+          <DashboardIcon class="w-5 h-5 shrink-0" />
           <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Dashboard</span>
         </RouterLink>
-        </nav>
+        
+        <RouterLink :to="latestReportRoute" class="group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative" active-class="bg-slate-800 text-white">
+          <ReportIcon class="w-5 h-5 shrink-0" />
+          <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Latest Report</span>
+        </RouterLink>
+      </nav>
     </aside>
 
     <div class="flex-1 flex flex-col min-w-0 bg-slate-50 relative">
       
-      <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shrink-0 z-30 w-full">
+      <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shrink-0 z-40 w-full relative">
         <div class="flex items-center gap-3">
           <button @click="ui.isLeftCollapsed = false" class="md:hidden text-slate-500 hover:text-slate-900 mr-2">☰</button>
+          
+          <Dropdown 
+            v-if="availableOfferings.length > 0" 
+            v-model="activeOffering" 
+            :options="availableOfferings" 
+            variant="minimal" 
+            class="font-semibold text-slate-800 -ml-2"
+          />
+          <span v-else-if="route.params.offeringXid" class="text-sm font-semibold text-slate-500 animate-pulse">Loading...</span>
         </div>
         
         <div class="flex items-center gap-4">
           <button v-if="ui.rightTabs.length > 0" @click="ui.isRightOpen = !ui.isRightOpen" :class="['p-1.5 rounded-md transition-colors', ui.isRightOpen ? 'bg-bloom-primary text-white' : 'text-slate-400 hover:bg-slate-100']">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+            <PanelIcon class="w-5 h-5" />
           </button>
         </div>
       </header>
@@ -67,8 +81,80 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
+import Dropdown from '@/components/common/Dropdown.vue'
+import * as api from '@/services/api' 
+
+// Extracted Icons
+import DashboardIcon from '@/components/icons/DashboardIcon.vue'
+import ReportIcon from '@/components/icons/ReportIcon.vue'
+import PanelIcon from '@/components/icons/PanelIcon.vue'
+
 const ui = useUiStore()
+const route = useRoute()
+const router = useRouter()
+
+const availableOfferings = ref([])
+const latestReportRoute = ref('/') // Fallback route until data loads
+
+// Two-way binding: Reads offeringXid from URL, updates URL on change
+const activeOffering = computed({
+  get: () => route.params.offeringXid || '',
+  set: (newXid) => {
+    if (!newXid || newXid === route.params.offeringXid) return
+    
+    // Explicitly build the parameter payload so missing properties don't crash the router
+    const newRoute = {
+      name: 'BloomReport', // Make sure this matches your router/index.js!
+      params: { 
+        orgXid: route.params.orgXid || 'org_1',
+        offeringType: route.params.offeringType || 'app',
+        offeringXid: newXid, 
+        periodType: route.params.periodType || 'quarterly',
+        periodId: route.params.periodId || '2026q1'
+      },
+      query: route.query
+    }
+
+    // FIX: Console log to verify exactly what is being pushed
+    console.log('🔄 Dropdown triggering route change:', newRoute)
+    router.push(newRoute)
+  }
+})
+
+onMounted(async () => {
+  try {
+    const bloomsData = await api.getAvailableBlooms()
+    
+    if (bloomsData && typeof bloomsData === 'object') {
+      // 1. Populate Dropdown Options
+      availableOfferings.value = Object.keys(bloomsData).map(xid => ({
+        id: xid,
+        label: xid
+      }))
+
+      // 2. Find the absolute latest report globally to power the Left Nav link
+      let latest = null
+      for (const [xid, reports] of Object.entries(bloomsData)) {
+        for (const report of reports) {
+          if (!latest || new Date(report.updatedAt) > new Date(latest.updatedAt)) {
+            latest = report
+          }
+        }
+      }
+
+      // If we found a valid latest report, construct its route dynamically
+      if (latest) {
+        // Fallback to org_1 for now if your API doesn't return the orgXid in the snippet
+        latestReportRoute.value = `/org_1/report/${latest.offeringType}/${latest.offeringXid}/${latest.bloomType}/${latest.bloomKey}`
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load available offerings", err)
+  }
+})
 </script>
 
 <style scoped>

@@ -66,7 +66,12 @@
         
         <div class="flex items-center md:justify-between gap-2 md:gap-0">
           <span>Updated<span class="md:hidden">:</span></span>
-          <span class="font-bold text-slate-900 whitespace-nowrap">{{ daysAgo }}</span>
+          <span 
+            class="font-bold text-slate-900 whitespace-nowrap cursor-help text-right" 
+            :title="exactDate"
+          >
+            {{ daysAgo }}
+          </span>
         </div>
         
         <div class="flex items-center md:justify-between gap-2 md:gap-0 md:mt-3 md:pt-4 md:border-t border-slate-100">
@@ -103,7 +108,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 const props = defineProps({
@@ -218,4 +223,17 @@ const copyLink = () => {
   url.searchParams.set('taxo', safeTaxo)
   navigator.clipboard.writeText(url.toString())
 }
+
+// --- EXACT DATE TOOLTIP ---
+const exactDate = (() => {
+  const timestamp = Date.now() - (props.issue.latestInteractionMsAgo || 0)
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric',
+    hour: 'numeric', 
+    minute: '2-digit'
+  }).format(new Date(timestamp))
+})()
+
 </script>

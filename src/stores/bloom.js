@@ -195,6 +195,12 @@ export const useBloomStore = defineStore('bloom', () => {
   })
 
   // --- ACTIONS ---
+  // PLACEHOLDER: Prevents the DashboardView from crashing on load
+  async function loadDashboardData() {
+    console.log("TODO: loadDashboardData called. Implement me later!")
+    return Promise.resolve() // Immediately resolves so await doesn't hang
+  }
+
   async function loadReportData(payload) {
     isLoading.value = true
     error.value = null
@@ -233,6 +239,6 @@ export const useBloomStore = defineStore('bloom', () => {
   return { 
     currentBloom, offeringContext, themes, countryReviewStats, sourcesWithVersion, isLoading, error,
     allIssues, joyStats, taxoStats, getFilteredAndSortedIssues,
-    loadReportData 
+    loadReportData, loadDashboardData
   }
 })

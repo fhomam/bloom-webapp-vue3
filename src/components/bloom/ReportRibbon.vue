@@ -11,10 +11,10 @@
             {{ bloomStore.joyStats?.scoreDescription || 'Mostly Frustrated' }}
           </span>
           
-          <div class="flex items-center gap-1.5 mt-2 text-[12.5px] font-medium text-slate-500">
-            <Dropdown v-model="activePeriod" :options="periodOptions" variant="minimal" />
-            <span class="text-slate-300">•</span>
-            <span>{{ safeReviewsAnalyzed }} interactions</span>
+          <div class="flex items-center gap-1 mt-2 text-[12.5px] font-medium text-slate-500">
+            <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" class="text-slate-600 font-bold" />
+            <span class="text-slate-300">/</span>
+            <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="text-slate-800 font-bold" />
           </div>
         </div>
       </div>
@@ -26,16 +26,20 @@
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-3 lg:gap-5 w-1/3 shrink-0">
-        <div v-for="m in ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']" :key="m" class="flex flex-col items-center w-10">
-          <span class="text-[22px] leading-none">{{ getEmoji(m) }}</span>
-          <span class="text-[13px] font-medium text-slate-600 mt-2">{{ getJoyPercent(m) }}</span>
+      <div class="flex flex-col items-end justify-center w-1/3 shrink-0 gap-3">
+        <div class="flex items-center justify-end gap-3 lg:gap-5">
+          <div v-for="m in ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']" :key="m" class="flex flex-col items-center w-10">
+            <span class="text-[24px] leading-none">{{ getEmoji(m) }}</span>
+            <span class="text-[13px] font-medium text-slate-600 mt-2">{{ getJoyPercent(m) }}</span>
+          </div>
+        </div>
+        <div class="text-[11.5px] font-medium text-slate-400 pr-1">
+          Based on {{ safeReviewsAnalyzed }} interactions
         </div>
       </div>
     </div>
 
     <div class="hidden sm:flex md:hidden flex-col gap-5 px-6 py-5">
-      
       <div class="flex items-start justify-between gap-4">
         
         <div class="flex flex-col items-start text-left min-w-0">
@@ -51,10 +55,10 @@
               <span class="text-3xl">🎉</span>
               <span class="text-3xl font-black text-slate-900 leading-none tracking-tighter">{{ safeJoyScore }}</span>
             </div>
-            <div class="flex items-center justify-end gap-1.5 mt-1.5 text-[12px] font-medium text-slate-500">
-              <span>{{ safeReviewsAnalyzed }} interactions</span>
-              <span class="text-slate-300">•</span>
-              <Dropdown v-model="activePeriod" :options="periodOptions" variant="minimal" />
+            <div class="flex items-center justify-end gap-1 mt-1.5 text-[12px] font-medium text-slate-500">
+              <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" class="text-slate-600 font-bold" />
+              <span class="text-slate-300">/</span>
+              <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="text-slate-800 font-bold" />
             </div>
           </div>
         </div>
@@ -72,13 +76,16 @@
       </div>
 
       <div class="flex items-center justify-between mt-4 pt-3.5 border-t border-slate-100">
-        <div class="flex items-center gap-1.5 text-[13px] font-medium text-slate-500">
-          <Dropdown v-model="activePeriod" :options="periodOptions" variant="minimal" class="text-slate-600 font-bold" />
-          <span class="text-slate-300">•</span>
-          <span class="truncate">{{ safeReviewsAnalyzed }} interactions</span>
+        <div class="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
+          <div class="flex items-center gap-1">
+            <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" class="text-slate-600 font-bold" />
+            <span class="text-slate-300">/</span>
+            <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="text-slate-800 font-bold" />
+          </div>
+          <span class="text-[11.5px] text-slate-400 truncate">Based on {{ safeReviewsAnalyzed }} interactions</span>
         </div>
 
-        <div class="flex items-center gap-1.5 shrink-0">
+        <div class="flex items-center gap-1.5 shrink-0 self-start mt-1">
           <span class="text-[22px]">🎉</span>
           <span class="text-[20px] font-black text-slate-900 tracking-tighter">{{ safeJoyScore }}</span>
         </div>
@@ -98,6 +105,10 @@
           <span class="text-[22px] leading-none">{{ getEmoji(m) }}</span>
           <span class="text-[13px] font-medium text-slate-600 mt-2">{{ getJoyPercent(m) }}</span>
         </div>
+        <div class="h-8 w-px bg-slate-200 mx-1"></div>
+        <div class="text-[11px] font-medium text-slate-400 leading-tight">
+          Based on<br/><b class="text-slate-500">{{ safeReviewsAnalyzed }}</b> interactions
+        </div>
       </div>
       
       <div class="flex items-center justify-end w-full sm:w-auto sm:ml-auto gap-3">
@@ -110,12 +121,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue' // Add ref, onMounted, onUnmounted
-import { useUiStore } from '@/stores/ui' // Import the UI store
-
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { useUiStore } from '@/stores/ui'
 import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
 import Dropdown from '@/components/common/Dropdown.vue'
+import * as api from '@/services/api' 
 
 const route = useRoute()
 const router = useRouter()
@@ -125,24 +136,100 @@ const ui = useUiStore()
 const ribbonRef = ref(null)
 let resizeObserver = null
 
-onMounted(() => {
-  // Watch the ribbon. Any time it changes size (or loads), update the store!
-  resizeObserver = new ResizeObserver((entries) => {
-    if (entries[0]) {
-      ui.reportRibbonHeight = entries[0].contentRect.height
-    }
-  })
+// --- UTILITIES ---
+const toTitleCase = (str) => {
+  if (!str) return ''
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
 
-  if (ribbonRef.value) {
-    resizeObserver.observe(ribbonRef.value)
+const formatSourceName = (key) => {
+  const map = {
+    'apple_app_store': 'App Store',
+    'google_play': 'Google Play',
+    'web': 'Web Portal'
+  }
+  return map[key] || toTitleCase(key.replace(/_/g, ' '))
+}
+
+// --- DYNAMIC BLOOM DATA ---
+const availableBloomsForOffering = ref([])
+
+const loadAvailablePeriods = async () => {
+  try {
+    const rawResponse = await api.getAvailableBlooms()
+    const bloomsObj = rawResponse?.data?.value || rawResponse?.value || rawResponse
+    
+    const activeXid = route.params.offeringXid
+    if (bloomsObj && bloomsObj[activeXid]) {
+      availableBloomsForOffering.value = bloomsObj[activeXid].blooms || []
+    }
+  } catch(e) {
+    console.error("Failed to load periods for ribbon", e)
+  }
+}
+
+watch(() => route.params.offeringXid, () => {
+  loadAvailablePeriods()
+})
+
+// --- CADENCE & PERIOD DROPDOWNS ---
+const activePeriodType = computed({
+  get: () => route.params.periodType || 'quarterly',
+  set: (newType) => {
+    if (newType === route.params.periodType) return
+    
+    const bloomsForType = availableBloomsForOffering.value.filter(b => b.bloomType === newType)
+    let newPeriodId = route.params.periodId 
+    
+    if (bloomsForType.length > 0) {
+      bloomsForType.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      newPeriodId = bloomsForType[0].bloomKey
+    }
+
+    router.push({
+      name: 'BloomReport',
+      params: { ...route.params, periodType: newType, periodId: newPeriodId },
+      query: route.query
+    })
   }
 })
 
-onUnmounted(() => {
-  if (resizeObserver) resizeObserver.disconnect()
+const activePeriodId = computed({
+  get: () => route.params.periodId || '2026q1',
+  set: (newId) => {
+    if (newId === route.params.periodId) return
+    router.push({
+      name: 'BloomReport',
+      params: { ...route.params, periodId: newId },
+      query: route.query
+    })
+  }
 })
 
-// --- UTILITIES & SAFE DATA MAPPING ---
+const periodTypeOptions = computed(() => {
+  if (!availableBloomsForOffering.value.length) {
+    const fallback = route.params.periodType || 'quarterly'
+    return [{ id: fallback, label: toTitleCase(fallback) }]
+  }
+  const types = [...new Set(availableBloomsForOffering.value.map(b => b.bloomType))]
+  return types.map(t => ({ id: t, label: toTitleCase(t) }))
+})
+
+const periodIdOptions = computed(() => {
+  const currentType = route.params.periodType || 'quarterly'
+  const blooms = availableBloomsForOffering.value.filter(b => b.bloomType === currentType)
+  
+  if (!blooms.length) {
+    const fallback = route.params.periodId || '2026q1'
+    return [{ id: fallback, label: fallback.toUpperCase() }]
+  }
+
+  blooms.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+  return blooms.map(b => ({ id: b.bloomKey, label: b.bloomKey.toUpperCase() }))
+})
+
+
+// --- OTHER UTILITIES & SAFE DATA MAPPING ---
 const getEmoji = (m) => ({ joy:'✨', confidence:'😎', engagement:'👀', frustration:'😤', hopelessness:'😔' }[m])
 const formatNumber = (num) => (num || 0).toLocaleString('en-US')
 
@@ -164,11 +251,6 @@ const safeRatingScore = computed(() => {
 })
 const safeRatingCount = computed(() => formatNumber(bloomStore.offeringContext?.userRating?.count || 0))
 
-const activePeriodLabel = computed(() => {
-  const p = route.query.period || '2026q1'
-  return p === '2026q1' ? '2026Q1' : p === '2025q4' ? '2025Q4' : '2025'
-})
-
 const getJoyPercent = (metric) => {
   if (!bloomStore.joyStats?.metrics) return '0%'
   const m = bloomStore.joyStats.metrics
@@ -188,32 +270,93 @@ const createUrlModel = (key, defaultVal) => computed({
 })
 
 const activeClass = createUrlModel('class', 'all')
-const activePeriod = createUrlModel('period', '2026q1') 
 const activeSource = createUrlModel('srcId', 'all')
 const activeCountry = createUrlModel('country', 'all')
 
-// --- DROPDOWN OPTIONS ---
-const periodOptions = [
-  { id: '2026q1', label: '2026Q1' },
-  { id: '2025q4', label: '2025Q4' },
-  { id: '2025', label: '2025 (Yearly)' }
-]
-
+// --- DYNAMIC DROPDOWN OPTIONS ---
 const classOptions = [
   { id: 'all', label: 'All Issues' }, 
-  { id: 'backlog', label: 'Backlog Candidates' }, 
-  { id: 'general', label: 'General Feedback' }
+  { id: 'backlog-candidate', label: 'Backlog Candidates' }, 
+  { id: 'non-actionable', label: 'General Feedback' }
 ]
 
-const sourceOptions = computed(() => [
-  { id: 'all', label: 'All Sources', subLabel: 'Platforms' }, 
-  ...(bloomStore.sourcesWithVersion?.apple_app_store ? [{id:'appstore', label:'App Store', subLabel: '6.27.0'}] : []), 
-  ...(bloomStore.sourcesWithVersion?.google_play ? [{id:'gplay', label:'Google Play', subLabel: 'Version'}] : [])
-])
+// Mutually-aware Sources
+const sourceOptions = computed(() => {
+  const baseOptions = [{ id: 'all', label: 'All Sources', subLabel: 'Platforms' }]
+  const versions = bloomStore.sourcesWithVersion
+  const stats = bloomStore.countryReviewStats
+  const currentCountry = activeCountry.value // e.g., 'us', 'ca', 'all'
+  
+  if (!versions || typeof versions !== 'object') return baseOptions
+  
+  const dynamicSources = Object.keys(versions)
+    .filter(sourceKey => {
+      // If a specific country is selected, ensure this source actually has >0 reviews for it
+      if (currentCountry && currentCountry !== 'all') {
+        return stats && stats[sourceKey] && stats[sourceKey][currentCountry] > 0
+      }
+      return true
+    })
+    .map(sourceKey => ({
+      id: sourceKey,
+      label: formatSourceName(sourceKey),
+      subLabel: versions[sourceKey] // The version string
+    }))
+  
+  return [...baseOptions, ...dynamicSources]
+})
 
-const countryOptions = [
-  { id: 'all', label: 'All', subLabel: 'Countries' },
-  { id: 'CA', label: 'CA', subLabel: '78 reviews' },
-  { id: 'US', label: 'US', subLabel: '142 reviews' }
-]
+// Mutually-aware Countries
+const countryOptions = computed(() => {
+  const baseOptions = [{ id: 'all', label: 'All', subLabel: 'Countries' }]
+  const stats = bloomStore.countryReviewStats
+  const currentSource = activeSource.value // e.g., 'apple_app_store', 'google_play', 'all'
+  
+  if (!stats || typeof stats !== 'object') return baseOptions
+  
+  const aggregatedCounts = {}
+  
+  Object.entries(stats).forEach(([sourceKey, sourceData]) => {
+    // If a specific source is selected, IGNORE all other sources
+    if (currentSource && currentSource !== 'all' && sourceKey !== currentSource) {
+      return
+    }
+
+    if (!sourceData || typeof sourceData !== 'object') return
+    
+    Object.entries(sourceData).forEach(([countryCode, count]) => {
+      const code = (countryCode || '').toLowerCase()
+      if (!code) return
+      aggregatedCounts[code] = (aggregatedCounts[code] || 0) + count
+    })
+  })
+  
+  const dynamicCountries = Object.entries(aggregatedCounts).map(([code, count]) => ({
+    id: code,
+    label: code.toUpperCase(),
+    subLabel: `${formatNumber(count)} reviews`
+  }))
+  
+  dynamicCountries.sort((a, b) => a.label.localeCompare(b.label))
+  
+  return [...baseOptions, ...dynamicCountries]
+})
+
+onMounted(() => {
+  loadAvailablePeriods()
+
+  resizeObserver = new ResizeObserver((entries) => {
+    if (entries[0]) {
+      ui.reportRibbonHeight = entries[0].contentRect.height
+    }
+  })
+
+  if (ribbonRef.value) {
+    resizeObserver.observe(ribbonRef.value)
+  }
+})
+
+onUnmounted(() => {
+  if (resizeObserver) resizeObserver.disconnect()
+})
 </script>

@@ -81,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import Dropdown from '@/components/common/Dropdown.vue'
@@ -99,56 +99,114 @@ const router = useRouter()
 const availableOfferings = ref([])
 const latestReportRoute = ref('/') // Fallback route until data loads
 
-// Two-way binding: Reads offeringXid from URL, updates URL on change
+// NEW: Session Memory & Full Data Reference
+const fullBloomsData = ref({}) 
+const lastVisitedMap = ref({}) // e.g., { 'r.hilton.hhonors': { pType: 'quarterly', pId: '2026q1' } }
+
+// Silently track the active period AND filters for each offering
+watch(
+  () => [route.params.offeringXid, route.params.periodType, route.params.periodId, route.query],
+  ([xid, pType, pId, currentQuery]) => {
+    if (xid && pType && pId) {
+      // Use spread operator to clone the query object so we don't accidentally mutate by reference
+      lastVisitedMap.value[xid] = { pType, pId, query: { ...currentQuery } }
+    }
+  },
+  { immediate: true, deep: true }
+)
+
 const activeOffering = computed({
   get: () => route.params.offeringXid || '',
   set: (newXid) => {
     if (!newXid || newXid === route.params.offeringXid) return
     
-    // Explicitly build the parameter payload so missing properties don't crash the router
-    const newRoute = {
-      name: 'BloomReport', // Make sure this matches your router/index.js!
-      params: { 
-        orgXid: route.params.orgXid || 'org_1',
-        offeringType: route.params.offeringType || 'app',
-        offeringXid: newXid, 
-        periodType: route.params.periodType || 'quarterly',
-        periodId: route.params.periodId || '2026q1'
-      },
-      query: route.query
+    let targetType = 'quarterly'
+    let targetId = '2026q1'
+    let targetOfferingType = 'app'
+    let targetQuery = {} // Default to a clean slate
+
+    const history = lastVisitedMap.value[newXid]
+    
+    if (history) {
+      // Restore their exact session for this app!
+      targetType = history.pType
+      targetId = history.pId
+      targetQuery = history.query || {} 
+    } else {
+      const offeringData = fullBloomsData.value[newXid]
+      if (offeringData) {
+        targetOfferingType = offeringData.details?.offeringType || 'app'
+        const blooms = offeringData.blooms || []
+        if (blooms.length > 0) {
+          const latest = [...blooms].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+          targetType = latest.bloomType
+          targetId = latest.bloomKey
+        }
+      }
     }
 
-    // FIX: Console log to verify exactly what is being pushed
-    console.log('🔄 Dropdown triggering route change:', newRoute)
+    const newRoute = {
+      name: 'BloomReport',
+      params: { 
+        orgXid: route.params.orgXid || 'org_1',
+        offeringType: targetOfferingType,
+        offeringXid: newXid, 
+        periodType: targetType,
+        periodId: targetId
+      },
+      query: targetQuery // Restores filters if they exist, otherwise {}
+    }
+
     router.push(newRoute)
   }
 })
 
 onMounted(async () => {
   try {
-    const bloomsData = await api.getAvailableBlooms()
+    const rawResponse = await api.getAvailableBlooms()
+    const bloomsObj = rawResponse?.data?.value || rawResponse?.value || rawResponse
     
-    if (bloomsData && typeof bloomsData === 'object') {
+    if (bloomsObj && typeof bloomsObj === 'object') {
+      
+      // Save the raw dictionary so our setter can calculate "latest" later
+      fullBloomsData.value = bloomsObj 
+
       // 1. Populate Dropdown Options
-      availableOfferings.value = Object.keys(bloomsData).map(xid => ({
-        id: xid,
-        label: xid
-      }))
+      availableOfferings.value = Object.keys(bloomsObj).map(xid => {
+        const offering = bloomsObj[xid]
+        const appName = offering?.details?.name
+        return {
+          id: xid, 
+          label: appName ? `${appName} (${xid})` : xid 
+        }
+      })
 
       // 2. Find the absolute latest report globally to power the Left Nav link
-      let latest = null
-      for (const [xid, reports] of Object.entries(bloomsData)) {
+      let latestReport = null
+      let latestDetails = null
+
+      for (const [xid, offeringData] of Object.entries(bloomsObj)) {
+        const reports = offeringData?.blooms || []
         for (const report of reports) {
-          if (!latest || new Date(report.updatedAt) > new Date(latest.updatedAt)) {
-            latest = report
+          const reportTime = report.updatedAt ? new Date(report.updatedAt).getTime() : 0
+          const latestTime = latestReport?.updatedAt ? new Date(latestReport.updatedAt).getTime() : 0
+          
+          if (!latestReport || reportTime > latestTime) {
+            latestReport = report
+            latestDetails = offeringData.details
           }
         }
       }
 
-      // If we found a valid latest report, construct its route dynamically
-      if (latest) {
-        // Fallback to org_1 for now if your API doesn't return the orgXid in the snippet
-        latestReportRoute.value = `/org_1/report/${latest.offeringType}/${latest.offeringXid}/${latest.bloomType}/${latest.bloomKey}`
+      // Construct global "Latest" route
+      if (latestReport && latestDetails) {
+        const org = route.params.orgXid || 'org_1'
+        const type = latestDetails.offeringType || 'app'
+        const xid = latestDetails.offeringXid
+        const pType = latestReport.bloomType || 'quarterly'
+        const pId = latestReport.bloomKey || '2026q1'
+        
+        latestReportRoute.value = `/${org}/report/${type}/${xid}/${pType}/${pId}`
       }
     }
   } catch (err) {

@@ -51,6 +51,13 @@
           <span>Reviews<span class="md:hidden">:</span></span>
           <span class="font-bold text-slate-900">{{ formatNumber(issue.interactions?.length || 0) }}</span>
         </div>
+
+        <div class="flex items-center md:justify-between gap-2 md:gap-0">
+          <span>Countries<span class="md:hidden">:</span></span>
+          <span class="font-bold text-slate-900 text-right cursor-help" :title="fullCountryTooltip">
+            {{ topCountriesLabel }}
+          </span>
+        </div>
         
         <div class="flex items-center md:justify-between gap-2 md:gap-0">
           <span>Upvotes<span class="md:hidden">:</span></span>
@@ -113,6 +120,41 @@ const formatNumber = (num) => {
   return Number(num).toLocaleString('en-US')
 }
 
+// --- COUNTRY SORTING & DISPLAY ---
+const sortedCountryData = computed(() => {
+  if (!props.issue.interactions || props.issue.interactions.length === 0) return []
+  
+  // Tally interactions by country
+  const counts = {}
+  props.issue.interactions.forEach(interaction => {
+    // Fallback to '??' if country is null/undefined in the raw data
+    const country = (interaction.country || '??').toUpperCase()
+    counts[country] = (counts[country] || 0) + 1
+  })
+
+  // Convert to array and sort highest to lowest
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])
+})
+
+const topCountriesLabel = computed(() => {
+  const data = sortedCountryData.value
+  if (data.length === 0) return 'N/A'
+  
+  const topTwo = data.slice(0, 2).map(c => c[0]).join(', ')
+  const remaining = data.length - 2
+  
+  if (remaining > 0) return `${topTwo}, +${remaining}`
+  return topTwo
+})
+
+const fullCountryTooltip = computed(() => {
+  const data = sortedCountryData.value
+  if (data.length === 0) return ''
+  return data.map(([country, count]) => `${country}: ${formatNumber(count)}`).join(' | ')
+})
+
+
+// --- OTHER LABELS & LOGIC ---
 const impactLabel = computed(() => {
   const val = props.issue.rice?.impact?.value || 0
   if (val > 1) return 'High'

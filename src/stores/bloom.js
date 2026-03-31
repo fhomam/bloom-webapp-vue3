@@ -110,8 +110,8 @@ export const useBloomStore = defineStore('bloom', () => {
   const currentBloom = ref(null)
   const offeringContext = ref(null)
   const themes = ref([])
-  const countryReviewStats = ref(null) // <-- ADDED
-  const sourcesWithVersion = ref(null) // <-- ADDED
+  const countryReviewStats = ref(null)
+  const sourcesWithVersion = ref(null)
   const isLoading = ref(false)
   const error = ref(null)
 
@@ -151,7 +151,7 @@ export const useBloomStore = defineStore('bloom', () => {
       let result = [...allIssues.value];
       const stats = taxoStats.value;
 
-      // Filter: Search Query
+      // Filter: Search Query (Local regex search stays intact!)
       if (query.search) {
         const lowerSearch = query.search.toLowerCase();
         result = result.filter(issue => {
@@ -198,29 +198,45 @@ export const useBloomStore = defineStore('bloom', () => {
   // PLACEHOLDER: Prevents the DashboardView from crashing on load
   async function loadDashboardData() {
     console.log("TODO: loadDashboardData called. Implement me later!")
-    return Promise.resolve() // Immediately resolves so await doesn't hang
+    return Promise.resolve() 
   }
 
   async function loadReportData(payload) {
     isLoading.value = true
     error.value = null
     try {
-      // Create the core params payload (dropping active filters) for stats calls
+      // 1. Extract filters safely, separate from base parameters
+      const { filters = {}, ...basePayload } = payload
+
+      // 2. Create the core params payload for auxiliary API calls.
+      // We explicitly DO NOT pass filters here so dropdown data remains fully populated.
       const corePayload = {
-        orgId: payload.orgId,
-        bloomKey: payload.bloomKey,
-        bloomType: payload.bloomType,
-        offeringXid: payload.offeringXid,
+        orgId: basePayload.orgId,
+        bloomKey: basePayload.bloomKey,
+        bloomType: basePayload.bloomType,
+        offeringXid: basePayload.offeringXid,
         offeringType: 'app'
       }
 
-      // Execute all 5 calls simultaneously 
+      // 3. Construct the specific payload for the main Bloom report, injecting active filters
+      const bloomApiPayload = {
+        ...corePayload,
+        // Only append filters if they are actively selected and not 'all'
+        country: filters.country && filters.country !== 'all' ? filters.country : undefined,
+        srcId: filters.srcId && filters.srcId !== 'all' ? filters.srcId : undefined,
+        theme: filters.theme && filters.theme !== 'all' ? filters.theme : undefined,
+        
+        // FIX: Map the frontend 'class' filter to the backend 'issueClass' parameter
+        issueClass: filters.class && filters.class !== 'all' ? filters.class : undefined
+      }
+
+      // 4. Execute all 5 calls simultaneously 
       const [bloomRes, contextRes, themesRes, countryRes, sourceRes] = await Promise.all([
-        api.getBloom({ ...payload, offeringType: 'app' }),
-        api.getAppOffering({ ...payload, offeringType: 'app' }),
-        api.getAllThemes({ ...payload, offeringType: 'app' }),
-        api.getBloomCountryReviewStats(corePayload),
-        api.getBloomSourcesWithVersion(corePayload)
+        api.getBloom(bloomApiPayload),               // Fetches the filtered issues
+        api.getAppOffering(corePayload),             // Uses core payload
+        api.getAllThemes(corePayload),               // Uses core payload
+        api.getBloomCountryReviewStats(corePayload), // Uses core payload
+        api.getBloomSourcesWithVersion(corePayload)  // Uses core payload
       ])
       
       currentBloom.value = bloomRes

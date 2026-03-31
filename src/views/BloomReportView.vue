@@ -5,7 +5,7 @@
       
       <ReportRibbon />  
 
-      <div class="sticky top-0 z-10 flex flex-col bg-white border-b border-slate-200">
+      <div class="sticky top-0 z-10 flex flex-col border-b border-slate-200 anti-bleed-header">
         
         <div 
           class="grid bg-slate-50"
@@ -53,15 +53,22 @@
       </div>
 
       <div class="w-full px-6 lg:px-10 mt-8 relative z-0">
-        <div v-if="filteredIssues.length > 0" class="space-y-6">
+        <div v-if="filteredIssues.length > 0" class="flex flex-col gap-5 pb-20">
           <IssueCard 
-            v-for="(issue, index) in filteredIssues" 
-            :key="issue.id"
+            v-for="issue in filteredIssues" 
+            :key="issue.id" 
             :issue="issue"
-            :index="index"
-            :total="filteredIssues.length"
           />
         </div>
+
+        <EmptyState 
+          v-else
+          icon="🔍"
+          title="No issues match your filters"
+          message="Try selecting different sources, themes, or periods to see more data."
+          :actionLabel="hasActiveFilters ? 'Clear all filters' : ''"
+          @action="clearFilters"
+        />
       </div>
     </div>
   </div>
@@ -77,6 +84,7 @@ import { debounce } from 'lodash'
 import ReportRibbon from '@/components/bloom/ReportRibbon.vue'
 import IssueCard from '@/components/bloom/IssueCard.vue'
 import Dropdown from '@/components/common/Dropdown.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -133,10 +141,32 @@ const sortOptions = [
   { id: 'newest-reviews', label: 'Newest' }
 ]
 
-const themeOptions = computed(() => [
-  { id: 'all', label: 'All Themes' }, 
-  ...(bloomStore.themes?.map(t => ({ id: t.themeId, label: t.name })) || [])
-])
+// --- DYNAMIC THEME DROPDOWN ---
+const themeOptions = computed(() => {
+  const baseOptions = [{ id: 'all', label: 'All Themes' }]
+  
+  // 1. Scan all raw issues in the current bloom to see which themes actually exist
+  const activeThemeIds = new Set()
+  
+  if (bloomStore.allIssues) {
+    bloomStore.allIssues.forEach(issue => {
+      if (issue.themes && Array.isArray(issue.themes)) {
+        issue.themes.forEach(t => activeThemeIds.add(t.themeId))
+      }
+    })
+  }
+
+  // 2. Filter the global themes list down to ONLY the ones present in this report
+  const availableThemes = bloomStore.themes?.filter(t => activeThemeIds.has(t.themeId)) || []
+
+  // 3. Map them to the Dropdown format
+  const dynamicThemes = availableThemes.map(t => ({ 
+    id: t.themeId, 
+    label: t.name 
+  }))
+
+  return [...baseOptions, ...dynamicThemes]
+})
 
 // --- SCROLL TRACKING (Brute-Force Native Listener) ---
 const isScrolled = ref(false)
@@ -152,32 +182,27 @@ const handleScroll = () => {
 
 // --- DYNAMIC DATA LOADING ---
 const loadDataIfNeeded = async () => {
-  // Prevent fetch if we navigate entirely away from the report view
   if (!route.params.offeringXid) return
 
-  // Check if store already matches the URL
-  const isCorrectDataLoaded = 
-    bloomStore.currentBloom?.offeringXid === route.params.offeringXid &&
-    bloomStore.currentBloom?.bloomKey === (route.params.periodId || '2026q1')
-
-  if (!isCorrectDataLoaded) {
-    try {
-      await bloomStore.loadReportData({ 
-        orgId: route.params.orgXid || 'org_1', // Fallback just in case
-        offeringXid: route.params.offeringXid, 
-        bloomType: route.params.periodType || 'quarterly', 
-        bloomKey: route.params.periodId || '2026q1'
-      })
-    } catch (err) {
-      console.error("Bloom Data failed to load:", err)
-    }
+  try {
+    await bloomStore.loadReportData({ 
+      orgId: route.params.orgXid || 'org_1', 
+      offeringXid: route.params.offeringXid, 
+      bloomType: route.params.periodType || 'quarterly', 
+      bloomKey: route.params.periodId || '2026q1',
+      filters: route.query
+    })
+  } catch (err) {
+    console.error("Bloom Data failed to load:", err)
   }
 }
 
-// Watch the route parameters. If they change, trigger a fresh data load!
+// Watch the route parameters AND the query parameters. 
+// If the app, period, OR any filter changes, trigger a fresh data load!
 watch(
-  () => [route.params.offeringXid, route.params.periodId], 
-  () => { loadDataIfNeeded() }
+  () => [route.params.offeringXid, route.params.periodId, route.query], 
+  () => { loadDataIfNeeded() },
+  { deep: true } // Required so Vue catches inner changes to the route.query object
 )
 
 // --- MOUNT ROUTINE ---
@@ -206,3 +231,19 @@ onUnmounted(() => {
   }
 })
 </script>
+
+<style scoped>
+/* PURE CSS BLEED FIX */
+.anti-bleed-header {
+  /* 1. Forces a solid, impenetrable white background plate */
+  background-color: #ffffff;
+  
+  /* 2. Forces the browser to render this entire header on its own dedicated GPU layer. 
+        Scrolling elements below physically cannot clip or bleed through a composited layer. */
+  transform: translate3d(0, 0, 0);
+  
+  /* 3. Acts as "grout". A solid 1px shadow with zero blur fills in any microscopic 
+        sub-pixel gaps between the DOM elements inside the header. */
+  box-shadow: 0 0 0 1px #ffffff;
+}
+</style>

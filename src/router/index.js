@@ -16,10 +16,15 @@ const router = createRouter({
           component: BloomDashboardView
         },
         {
+          path: '/:orgXid/dashboard/:offeringType/:offeringXid/:periodType/:periodId',
+          name: 'BloomDashboard',
+          component: BloomDashboardView
+        },
+        {
           path: '/:orgXid/reports/:offeringType/:offeringXid/:periodType/:periodId',
           name: 'BloomReport',
           component: () => import('@/views/BloomReportView.vue')
-        }        
+        }
       ]
     },
   ]

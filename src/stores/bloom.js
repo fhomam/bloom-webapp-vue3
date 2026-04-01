@@ -195,10 +195,38 @@ export const useBloomStore = defineStore('bloom', () => {
   })
 
   // --- ACTIONS ---
-  // PLACEHOLDER: Prevents the DashboardView from crashing on load
-  async function loadDashboardData() {
-    console.log("TODO: loadDashboardData called. Implement me later!")
-    return Promise.resolve() 
+  async function loadDashboardData(payload) {
+    isLoading.value = true
+    error.value = null
+    try {
+      const corePayload = {
+        orgId: payload.orgId,
+        bloomKey: payload.bloomKey,
+        bloomType: payload.bloomType,
+        offeringXid: payload.offeringXid,
+        offeringType: payload.offeringType || 'app'
+      }
+
+      // For the dashboard, we fetch the core data simultaneously
+      const [bloomRes, contextRes, themesRes, countryRes, sourceRes] = await Promise.all([
+        api.getBloom(corePayload), // Dashboard needs all issues to calculate aggregate RICE
+        api.getAppOffering(corePayload),
+        api.getAllThemes(corePayload),
+        api.getBloomCountryReviewStats(corePayload),
+        api.getBloomSourcesWithVersion(corePayload)
+      ])
+      
+      currentBloom.value = bloomRes
+      offeringContext.value = contextRes
+      themes.value = themesRes
+      countryReviewStats.value = countryRes
+      sourcesWithVersion.value = sourceRes
+    } catch (err) {
+      console.error(err)
+      error.value = "Failed to load Dashboard data."
+    } finally {
+      isLoading.value = false
+    }
   }
 
   async function loadReportData(payload) {

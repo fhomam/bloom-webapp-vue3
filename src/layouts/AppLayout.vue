@@ -125,15 +125,16 @@ const activeOffering = computed({
   set: (newXid) => {
     if (!newXid || newXid === route.params.offeringXid) return
     
+    // 1. Establish the target context for the newly selected offering
     let targetType = 'quarterly'
     let targetId = '2026q1'
     let targetOfferingType = 'app'
-    let targetQuery = {} // Default to a clean slate
+    let targetQuery = {} 
 
     const history = lastVisitedMap.value[newXid]
     
     if (history) {
-      // Restore their exact session for this app!
+      // Restore their exact session for this app
       targetType = history.pType
       targetId = history.pId
       targetQuery = history.query || {} 
@@ -150,19 +151,40 @@ const activeOffering = computed({
       }
     }
 
-    const newRoute = {
-      name: 'BloomReport',
-      params: { 
-        orgXid: route.params.orgXid || 'org_1',
-        offeringType: targetOfferingType,
-        offeringXid: newXid, 
-        periodType: targetType,
-        periodId: targetId
-      },
-      query: targetQuery // Restores filters if they exist, otherwise {}
+    // 2. Determine target route (Stay where they are, unless they are on the root '/')
+    const isRoot = !route.name || route.name === 'home'
+    const targetRouteName = isRoot ? 'BloomDashboard' : route.name
+
+    // 3. Smart Parameter Merging
+    // We copy the existing route parameters so we don't break the current view
+    const newParams = { ...route.params }
+    
+    // Always update the offering context
+    newParams.offeringXid = newXid
+    
+    // Only update offeringType if the current route uses it (or if we are redirecting from root)
+    if (newParams.offeringType !== undefined || isRoot) {
+      newParams.offeringType = targetOfferingType
+    }
+    
+    // Only update period details if the current view ACTUALLY cares about periods
+    // (Prevents Vue Router from throwing missing param warnings on pages like Settings)
+    if (newParams.periodId !== undefined || isRoot) {
+      newParams.periodType = targetType
+      newParams.periodId = targetId
     }
 
-    router.push(newRoute)
+    // Ensure org exists if redirecting from root
+    if (isRoot && !newParams.orgXid) {
+      newParams.orgXid = 'org_1' 
+    }
+
+    // 4. Execute the seamless transition
+    router.push({
+      name: targetRouteName,
+      params: newParams,
+      query: targetQuery
+    })
   }
 })
 

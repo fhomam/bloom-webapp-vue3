@@ -6,60 +6,6 @@ import sortBy from 'lodash/sortBy'
 // ==========================================
 // 1. PURE MATH & UTILITIES (From bloomlib.js)
 // ==========================================
-const JOY_FACTOR = 3;
-const CONFIDENCE_FACTOR = 2;
-const ENGAGEMENT_FACTOR = 1;
-const FRUSTRATION_FACTOR = -1.5;
-const HOPELESSNESS_FACTOR = -3;
-const CONTENTION_THRESHOLD = 10;
-
-function getJoyMetrics(bloom) {
-  let joyMetrics = { reviewsAnalyzed: 0, joy: 0, confidence: 0, engagement: 0, frustration: 0, hopelessness: 0 };
-  if (!bloom || !bloom.categories) return joyMetrics;
-
-  bloom.categories.forEach(category => {
-    category.topics.forEach(topic => {
-      topic.issues.forEach(issue => {
-        issue.interactions.forEach(interaction => {
-          if (interaction.analysis && interaction.analysis.joy) {
-            joyMetrics['reviewsAnalyzed']++;
-            interaction.analysis.joy.forEach((entry) => {
-              joyMetrics[entry.metric]++;
-            });
-          }
-        });
-      });
-    });
-  });
-  return joyMetrics;
-}
-
-function calculateJoyScore(joyMetrics) {
-  const totalExpression = joyMetrics.joy + joyMetrics.confidence + joyMetrics.engagement + joyMetrics.frustration + joyMetrics.hopelessness;
-  if (totalExpression === 0) return 0;
-
-  const score = 
-    ((joyMetrics.joy / totalExpression) * JOY_FACTOR) +
-    ((joyMetrics.confidence / totalExpression) * CONFIDENCE_FACTOR) +
-    ((joyMetrics.engagement / totalExpression) * ENGAGEMENT_FACTOR) +
-    ((joyMetrics.frustration / totalExpression) * FRUSTRATION_FACTOR) +
-    ((joyMetrics.hopelessness / totalExpression) * HOPELESSNESS_FACTOR);
-  
-  return score;
-}
-
-function getJoyScoreDescription(score, reviewCount) {
-  if (score < -2.5) return "Mostly Hopeless";
-  if (score < -1.5) return "Leaning Hopeless";
-  if (score < -0.5) return "Mostly Frustrated";
-  if (score >= -0.5 && score <= 0.5) return (reviewCount >= CONTENTION_THRESHOLD) ? "Contentious" : "Inconclusive";
-  if (score > 0.5 && score <= 1) return "Leaning Engaged";
-  if (score > 1 && score <= 1.5) return "Positively Engaged";
-  if (score > 1.5 && score <= 2) return "Leaning Confident";
-  if (score > 2 && score <= 2.5) return "Confident";
-  if (score > 2.5 && score <= 3) return "Joyful";
-  return "Unknown";
-}
 
 // Generates the stats needed for sorting (most reviews, newest, oldest)
 function calculateInteractionStats(categories) {
@@ -131,13 +77,10 @@ export const useBloomStore = defineStore('bloom', () => {
     return issues
   })
 
-  // 2. Joy Score Engine
+  // 2. Joy Score Engine (Now powered 100% by backend payload!)
   const joyStats = computed(() => {
-    if (!currentBloom.value) return null;
-    const metrics = getJoyMetrics(currentBloom.value);
-    const score = calculateJoyScore(metrics);
-    const scoreDescription = getJoyScoreDescription(score, metrics.reviewsAnalyzed);   
-    return { metrics, score, scoreDescription };
+    if (!currentBloom.value || !currentBloom.value.joyStats) return null;
+    return currentBloom.value.joyStats;
   })
 
   // 3. Taxonomy Stats (for sorting)

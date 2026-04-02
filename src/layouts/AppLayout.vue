@@ -54,8 +54,6 @@
         <main class="flex-1 overflow-y-auto hide-scrollbar">
           <RouterView />
         </main>
-
-        <div v-if="ui.isRightOpen" @click="ui.isRightOpen = false" class="fixed inset-0 bg-slate-900/20 z-30 lg:hidden backdrop-blur-sm"></div>
         
         <aside 
           :class="[
@@ -63,19 +61,25 @@
             'fixed lg:static inset-y-0 right-0 w-80 lg:border-l bg-slate-50 border-slate-200 transition-all duration-300 ease-in-out shrink-0 flex flex-col overflow-hidden z-40 shadow-2xl lg:shadow-none'
           ]"
         >
-          <div class="flex border-b border-slate-200 shrink-0 min-w-[320px] bg-white">
-            <button v-for="tab in ui.rightTabs" :key="tab.id" @click="ui.activeRightTab = tab.id" :class="['flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2', ui.activeRightTab === tab.id ? 'text-bloom-primary border-b-2 border-bloom-primary' : 'text-slate-500 hover:text-slate-800']">
+          <div class="flex border-b border-slate-200 shrink-0 min-w-[320px] bg-white overflow-x-auto hide-scrollbar">
+            <button v-for="tab in ui.rightTabs" :key="tab.id" @click="ui.activeRightTab = tab.id" :class="['flex-1 min-w-[120px] py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2', ui.activeRightTab === tab.id ? 'text-bloom-primary border-b-2 border-bloom-primary' : 'text-slate-500 hover:text-slate-800']">
               <span v-if="tab.icon" v-html="tab.icon" class="w-4 h-4"></span>
               {{ tab.label }}
             </button>
           </div>
 
-          <div class="flex-1 overflow-y-auto p-4 hide-scrollbar min-w-[320px]">
-            <TaxonomyTree v-if="ui.activeRightTab === 'taxonomy' && route.name === 'BloomReport'" />
+          <div class="flex-1 overflow-hidden min-w-[320px] bg-white flex flex-col">
             
-            <div v-else class="text-sm text-slate-500">
+            <div v-if="ui.activeRightTab === 'taxonomy' && route.name === 'BloomReport'" class="h-full p-4">
+              <TaxonomyTree />
+            </div>
+
+            <InteractionExplorer v-else-if="ui.activeRightTab === 'interactions'" />
+            
+            <div v-else class="p-4 text-sm text-slate-500">
               Currently viewing: <strong class="text-slate-800">{{ ui.activeRightTab }}</strong> panel.
             </div>
+
           </div>
         </aside>
 
@@ -95,7 +99,10 @@ import * as api from '@/services/api'
 import DashboardIcon from '@/components/icons/DashboardIcon.vue'
 import ReportIcon from '@/components/icons/ReportIcon.vue'
 import PanelIcon from '@/components/icons/PanelIcon.vue'
+
+// Sidebar Content Components
 import TaxonomyTree from '@/components/bloom/TaxonomyTree.vue'
+import InteractionExplorer from '@/components/bloom/InteractionExplorer.vue' // <-- IMPORTED
 
 const ui = useUiStore()
 const route = useRoute()
@@ -104,16 +111,13 @@ const router = useRouter()
 const availableOfferings = ref([])
 const latestReportRoute = ref('/') // Fallback route until data loads
 
-// NEW: Session Memory & Full Data Reference
 const fullBloomsData = ref({}) 
-const lastVisitedMap = ref({}) // e.g., { 'r.hilton.hhonors': { pType: 'quarterly', pId: '2026q1' } }
+const lastVisitedMap = ref({}) 
 
-// Silently track the active period AND filters for each offering
 watch(
   () => [route.params.offeringXid, route.params.periodType, route.params.periodId, route.query],
   ([xid, pType, pId, currentQuery]) => {
     if (xid && pType && pId) {
-      // Use spread operator to clone the query object so we don't accidentally mutate by reference
       lastVisitedMap.value[xid] = { pType, pId, query: { ...currentQuery } }
     }
   },
@@ -125,7 +129,6 @@ const activeOffering = computed({
   set: (newXid) => {
     if (!newXid || newXid === route.params.offeringXid) return
     
-    // 1. Establish the target context for the newly selected offering
     let targetType = 'quarterly'
     let targetId = '2026q1'
     let targetOfferingType = 'app'
@@ -134,7 +137,6 @@ const activeOffering = computed({
     const history = lastVisitedMap.value[newXid]
     
     if (history) {
-      // Restore their exact session for this app
       targetType = history.pType
       targetId = history.pId
       targetQuery = history.query || {} 
@@ -151,35 +153,26 @@ const activeOffering = computed({
       }
     }
 
-    // 2. Determine target route (Stay where they are, unless they are on the root '/')
     const isRoot = !route.name || route.name === 'home'
     const targetRouteName = isRoot ? 'BloomDashboard' : route.name
 
-    // 3. Smart Parameter Merging
-    // We copy the existing route parameters so we don't break the current view
     const newParams = { ...route.params }
     
-    // Always update the offering context
     newParams.offeringXid = newXid
     
-    // Only update offeringType if the current route uses it (or if we are redirecting from root)
     if (newParams.offeringType !== undefined || isRoot) {
       newParams.offeringType = targetOfferingType
     }
     
-    // Only update period details if the current view ACTUALLY cares about periods
-    // (Prevents Vue Router from throwing missing param warnings on pages like Settings)
     if (newParams.periodId !== undefined || isRoot) {
       newParams.periodType = targetType
       newParams.periodId = targetId
     }
 
-    // Ensure org exists if redirecting from root
     if (isRoot && !newParams.orgXid) {
       newParams.orgXid = 'org_1' 
     }
 
-    // 4. Execute the seamless transition
     router.push({
       name: targetRouteName,
       params: newParams,
@@ -195,10 +188,8 @@ onMounted(async () => {
     
     if (bloomsObj && typeof bloomsObj === 'object') {
       
-      // Save the raw dictionary so our setter can calculate "latest" later
       fullBloomsData.value = bloomsObj 
 
-      // 1. Populate Dropdown Options
       availableOfferings.value = Object.keys(bloomsObj).map(xid => {
         const offering = bloomsObj[xid]
         const appName = offering?.details?.name
@@ -208,7 +199,6 @@ onMounted(async () => {
         }
       })
 
-      // 2. Find the absolute latest report globally to power the Left Nav link
       let latestReport = null
       let latestDetails = null
 
@@ -225,7 +215,6 @@ onMounted(async () => {
         }
       }
 
-      // Construct global "Latest" route
       if (latestReport && latestDetails) {
         const org = route.params.orgXid || 'org_1'
         const type = latestDetails.offeringType || 'app'

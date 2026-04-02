@@ -211,6 +211,7 @@ const smartHighlight = (rawText, joyArray, targetMetric) => {
 // 4. Feed Generator (Default to mixed latest, or filter by click)
 const verbatimFeed = computed(() => {
   let examples = []
+  const seenIds = new Set() // <-- 1. Add a Set to track uniqueness
   const issues = bloomStore.allIssues || []
 
   for (const issue of issues) {
@@ -218,26 +219,30 @@ const verbatimFeed = computed(() => {
     for (const interaction of issue.interactions) {
       if (!interaction.analysis?.joy) continue
       
+      // 2. Skip if we've already added this exact interaction
+      if (seenIds.has(interaction.id)) continue 
+
       // If a dimension is clicked, only grab that metric
       if (selectedDimensionId.value) {
         if (interaction.analysis.joy.some(j => j.metric === selectedDimensionId.value)) {
           examples.push(interaction)
+          seenIds.add(interaction.id) // 3. Mark as seen
         }
       } 
       // If default view, grab interaction and tag it with its highest priority emotion
       else {
         if (interaction.analysis.joy.length > 0) {
-          // Sort by our dimOrder to pick the most 'severe' or relevant emotion to highlight
           const sortedEmotions = [...interaction.analysis.joy].sort((a, b) => {
              return dimOrder.indexOf(a.metric) - dimOrder.indexOf(b.metric)
           })
           examples.push({ ...interaction, _primaryEmotion: sortedEmotions[0].metric })
+          seenIds.add(interaction.id) // 3. Mark as seen
         }
       }
     }
   }
 
-  // Sort by newest and grab top 5-6
+  // Sort by newest and grab top 6 unique examples
   return examples
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 6)

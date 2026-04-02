@@ -48,10 +48,10 @@
 
       <div class="w-full md:w-[220px] shrink-0 flex flex-row flex-wrap md:flex-col gap-x-6 gap-y-3 md:gap-4 text-sm text-slate-500 md:border-l border-slate-100 md:pl-6 lg:pl-8 mt-2 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0">
         
-        <div class="flex items-center md:justify-between gap-2 md:gap-0">
-          <span>Reviews<span class="md:hidden">:</span></span>
-          <span class="font-bold text-slate-900">{{ formatNumber(issue.interactions?.length || 0) }}</span>
-        </div>
+        <button @click.stop="openExplorer" class="flex items-center md:justify-between gap-2 md:gap-0 cursor-pointer group/btn w-full text-left transition-colors">
+          <span class="group-hover/btn:text-bloom-primary transition-colors">Reviews<span class="md:hidden">:</span></span>
+          <span class="font-bold text-slate-900 group-hover/btn:text-bloom-primary transition-colors">{{ formatNumber(issue.interactions?.length || 0) }}</span>
+        </button>
 
         <div class="flex items-center md:justify-between gap-2 md:gap-0">
           <span>Countries<span class="md:hidden">:</span></span>
@@ -62,16 +62,13 @@
         
         <div class="flex items-center md:justify-between gap-2 md:gap-0">
           <span>Upvotes<span class="md:hidden">:</span></span>
-          <span class="font-bold text-slate-900">{{ formatNumber(issue.upvoteCount || 0) }}</span>
+          <span class="font-bold text-slate-900">{{ formatNumber(issueStats.upvotes) }}</span>
         </div>
         
         <div class="flex items-center md:justify-between gap-2 md:gap-0">
           <span>Updated<span class="md:hidden">:</span></span>
-          <span 
-            class="font-bold text-slate-900 whitespace-nowrap cursor-help text-right" 
-            :title="exactDate"
-          >
-            {{ daysAgo }}
+          <span class="font-bold text-slate-900 whitespace-nowrap cursor-help text-right" :title="exactDate">
+            {{ daysAgoLabel }}
           </span>
         </div>
         
@@ -109,7 +106,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 
@@ -129,29 +126,49 @@ const formatNumber = (num) => {
   return Number(num).toLocaleString('en-US')
 }
 
+// --- LOCAL MATH LOGIC ---
+const issueStats = computed(() => {
+  let latestMs = 0
+  let upvotes = 0
+
+  if (props.issue.interactions && props.issue.interactions.length > 0) {
+    props.issue.interactions.forEach(interaction => {
+      const dateStr = interaction.updatedAtSource || interaction.createdAt
+      if (dateStr) {
+        const timestamp = new Date(dateStr).getTime()
+        if (timestamp > latestMs) latestMs = timestamp
+      }
+
+      if (interaction.reactions && Array.isArray(interaction.reactions)) {
+        const upvoteReaction = interaction.reactions.find(r => r.type === 'upvote')
+        if (upvoteReaction) upvotes += (upvoteReaction.count || 0)
+      }
+    })
+  }
+
+  return {
+    latestTimestamp: latestMs,
+    upvotes: upvotes,
+    daysAgo: latestMs ? Math.floor((Date.now() - latestMs) / (1000 * 60 * 60 * 24)) : null
+  }
+})
+
 // --- COUNTRY SORTING & DISPLAY ---
 const sortedCountryData = computed(() => {
   if (!props.issue.interactions || props.issue.interactions.length === 0) return []
-  
-  // Tally interactions by country
   const counts = {}
   props.issue.interactions.forEach(interaction => {
-    // Fallback to '??' if country is null/undefined in the raw data
     const country = (interaction.country || '??').toUpperCase()
     counts[country] = (counts[country] || 0) + 1
   })
-
-  // Convert to array and sort highest to lowest
   return Object.entries(counts).sort((a, b) => b[1] - a[1])
 })
 
 const topCountriesLabel = computed(() => {
   const data = sortedCountryData.value
   if (data.length === 0) return 'N/A'
-  
   const topTwo = data.slice(0, 2).map(c => c[0]).join(', ')
   const remaining = data.length - 2
-  
   if (remaining > 0) return `${topTwo}, +${remaining}`
   return topTwo
 })
@@ -178,15 +195,30 @@ const confidenceLabel = computed(() => {
   return 'Low'
 })
 
-const daysAgo = computed(() => {
-  if (!props.issue.latestInteractionMsAgo) return 'Today'
-  const days = Math.floor(props.issue.latestInteractionMsAgo / (1000 * 60 * 60 * 24))
+const daysAgoLabel = computed(() => {
+  const days = issueStats.value.daysAgo
+  if (days === null) return 'N/A'
   if (days === 0) return 'Today'
   if (days === 1) return '1 day ago'
   return `${formatNumber(days)} days ago`
 })
 
-// SAFELY GET TAXO
+const exactDate = computed(() => {
+  if (!issueStats.value.latestTimestamp) return 'No interactions yet'
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+  }).format(new Date(issueStats.value.latestTimestamp))
+})
+
+// --- TAXO EXPLORATION ACTIONS ---
+
+// NEW: Wire up the Sidebar Trigger
+const openExplorer = () => {
+  if (!props.issue.taxo) return
+  const safeTaxo = props.issue.taxo.replaceAll(':', '-')
+  router.push({ query: { ...route.query, exploreIssue: safeTaxo } })
+}
+
 const getCategoryTaxo = computed(() => {
   if (props.issue.category?.taxo) return props.issue.category.taxo
   if (props.issue.taxo) return props.issue.taxo.split(':')[0]
@@ -197,7 +229,7 @@ const getTopicTaxo = computed(() => {
   if (props.issue.topic?.taxo) return props.issue.topic.taxo
   if (props.issue.taxo) {
     const parts = props.issue.taxo.split(':')
-    if (parts.length >= 2) return `${parts[0]}:${parts[1]}` // e.g., "other:all"
+    if (parts.length >= 2) return `${parts[0]}:${parts[1]}` 
     return props.issue.taxo
   }
   return null
@@ -215,11 +247,9 @@ const toggleTaxo = (taxo) => {
   const safeTaxo = taxo.replaceAll(':', '-')
   const newQuery = { ...route.query }
   
-  if (newQuery.taxo === safeTaxo) {
-    delete newQuery.taxo
-  } else {
+  if (newQuery.taxo === safeTaxo) delete newQuery.taxo
+  else {
     newQuery.taxo = safeTaxo
-    // Pops the sidebar open when they click the breadcrumb!
     ui.isRightOpen = true 
     ui.activeRightTab = 'taxonomy' 
   }
@@ -227,13 +257,8 @@ const toggleTaxo = (taxo) => {
   router.push({ query: newQuery })
 }
 
-const toggleCategory = () => {
-  toggleTaxo(getCategoryTaxo.value)
-}
-
-const toggleTopic = () => {
-  toggleTaxo(getTopicTaxo.value)
-}
+const toggleCategory = () => toggleTaxo(getCategoryTaxo.value)
+const toggleTopic = () => toggleTaxo(getTopicTaxo.value)
 
 const toggleTheme = (themeId) => {
   const newQuery = { ...route.query }
@@ -249,17 +274,4 @@ const copyLink = () => {
   url.searchParams.set('taxo', safeTaxo)
   navigator.clipboard.writeText(url.toString())
 }
-
-// --- EXACT DATE TOOLTIP ---
-const exactDate = (() => {
-  const timestamp = Date.now() - (props.issue.latestInteractionMsAgo || 0)
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric',
-    hour: 'numeric', 
-    minute: '2-digit'
-  }).format(new Date(timestamp))
-})()
-
 </script>

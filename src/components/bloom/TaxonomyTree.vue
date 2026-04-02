@@ -1,7 +1,21 @@
 <template>
-  <div class="flex flex-col h-full w-full">
+  <div class="flex flex-col h-full w-full bg-white relative">
 
-    <div class="overflow-y-auto pb-10 custom-scrollbar flex-1 -mx-2 px-2">
+    <div class="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-start justify-between gap-4 shrink-0">
+      <div class="flex flex-col min-w-0">
+        <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+          Taxonomy Explorer
+        </h2>
+        <div class="text-[17px] font-bold text-slate-900 leading-tight truncate">
+          Report Categories
+        </div>
+      </div>
+      <button @click="ui.isRightOpen = false" class="p-2 -mr-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200/50 rounded-full transition-colors shrink-0">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+    </div>
+
+    <div class="overflow-y-auto pt-4 pb-10 custom-scrollbar flex-1 px-3">
       
       <div v-if="!treeData.length" class="text-center py-10 text-slate-400 text-sm">
         No taxonomy data available.
@@ -94,10 +108,12 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
+import { useUiStore } from '@/stores/ui'
 
 const route = useRoute()
 const router = useRouter()
 const bloomStore = useBloomStore()
+const ui = useUiStore() // Imported for the close button
 
 const formatNumber = (num) => Number(num || 0).toLocaleString('en-US')
 
@@ -147,15 +163,9 @@ const selectNode = (taxo) => {
   router.push({ query: newQuery })
 }
 
-const clearSelection = () => {
-  const newQuery = { ...route.query }
-  delete newQuery.taxo
-  router.push({ query: newQuery })
-}
-
 // --- AUTO-SCROLL LOGIC ---
 const scrollToNode = async (taxoId) => {
-  await nextTick() // Wait for DOM to finish rendering the newly expanded folders
+  await nextTick() 
   const el = document.getElementById(`node-${taxoId}`)
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })

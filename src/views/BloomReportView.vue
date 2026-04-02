@@ -197,11 +197,50 @@ const loadDataIfNeeded = async () => {
   }
 }
 
+// --- SIDEBAR & TAB MANAGEMENT ---
+const updateSidebarState = () => {
+  const hasExplore = !!route.query.exploreIssue || !!route.query.exploreEmotion
+
+  const tabs = [
+    { 
+      id: 'taxonomy', 
+      label: 'Taxonomy', 
+      icon: `<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="3"></circle><circle cx="19" cy="5" r="3"></circle><circle cx="19" cy="19" r="3"></circle><path d="M8 12h4"></path><path d="M12 5v14"></path><path d="M12 5h4"></path><path d="M12 19h4"></path></svg>`
+    },
+    {
+      id: 'interactions',
+      label: 'Interactions',
+      icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>`
+    }
+  ]
+
+  let activeTab = ui.activeRightTab || 'taxonomy'
+  let isOpen = ui.isRightOpen // Retain the current open/closed state by default!
+
+  if (hasExplore) {
+    activeTab = 'interactions'
+    isOpen = true // Only FORCE open if they specifically click a new explore link
+  } else {
+    // If no explore parameters exist, ensure the UI resets to taxonomy 
+    // so it's ready for the next time they open it
+    if (activeTab === 'interactions') {
+      activeTab = 'taxonomy'
+    }
+  }
+
+  ui.configureRightSidebar(tabs, activeTab, isOpen)
+}
+
+// --- LIFECYCLE & WATCHERS ---
+
 // Watch the route parameters AND the query parameters. 
-// If the app, period, OR any filter changes, trigger a fresh data load!
+// If the app, period, OR any filter/explore state changes, trigger our updates synchronously!
 watch(
-  () => [route.params.offeringXid, route.params.periodId, route.query], 
-  () => { loadDataIfNeeded() },
+() => route.fullPath, 
+  () => { 
+    loadDataIfNeeded()
+    updateSidebarState() 
+  },
   { deep: true } // Required so Vue catches inner changes to the route.query object
 )
 
@@ -216,28 +255,12 @@ onMounted(() => {
     // 3. Fire it once immediately just in case they load halfway down the page
     handleScroll()
   }
-
-  // Sidebar defaults to closed
-  ui.configureRightSidebar([{ id: 'taxo', label: 'Taxonomy', icon: '' }], 'taxo', false)
   
   // 4. Initial check to load data
   loadDataIfNeeded()
 
-  // 5. Tell the UI store to build the Taxonomy tab for this specific page
-  // Check if someone shared a link with a pre-selected taxo
-  const shouldAutoOpen = !!route.query.taxo
-
-  ui.configureRightSidebar(
-    [
-      { 
-        id: 'taxonomy', 
-        label: 'Taxonomy', 
-        icon: `<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="3"></circle><circle cx="19" cy="5" r="3"></circle><circle cx="19" cy="19" r="3"></circle><path d="M8 12h4"></path><path d="M12 5v14"></path><path d="M12 5h4"></path><path d="M12 19h4"></path></svg>`
-      }
-    ],
-    'taxonomy', 
-    shouldAutoOpen
-  )
+  // 5. Initialize the sidebar based on the URL the user landed on
+  updateSidebarState()
 })
 
 onUnmounted(() => {

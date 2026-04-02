@@ -36,36 +36,39 @@
       </svg>
     </button>
 
-    <Transition 
-      enter-active-class="transition ease-out duration-100" 
-      enter-from-class="transform opacity-0 scale-95" 
-      enter-to-class="transform opacity-100 scale-100" 
-      leave-active-class="transition ease-in duration-75" 
-      leave-from-class="transform opacity-100 scale-100" 
-      leave-to-class="transform opacity-0 scale-95"
-    >
-      <div 
-        v-show="isOpen" 
-        :class="[
-          'absolute mt-2 w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 py-1',
-          alignmentClass
-        ]"
+    <Teleport to="body">
+      <Transition 
+        enter-active-class="transition ease-out duration-100" 
+        enter-from-class="transform opacity-0 scale-95" 
+        enter-to-class="transform opacity-100 scale-100" 
+        leave-active-class="transition ease-in duration-75" 
+        leave-from-class="transform opacity-100 scale-100" 
+        leave-to-class="transform opacity-0 scale-95"
       >
-        <button
-          v-for="option in options"
-          :key="option.id"
-          @click="selectOption(option)"
+        <div 
+          v-show="isOpen" 
+          :style="dropdownStyle"
           :class="[
-            'w-full px-4 py-2 transition-colors flex flex-col',
-            variant === 'boxed' ? 'items-center justify-center text-center' : 'items-start text-left',
-            modelValue === option.id ? 'bg-slate-50 text-bloom-primary' : 'text-slate-700 hover:bg-slate-50'
+            'fixed w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-[9999] py-1',
+            alignmentClass
           ]"
         >
-          <span :class="['text-[14px]', modelValue === option.id ? 'font-bold' : 'font-medium']">{{ option.label }}</span>
-          <span v-if="option.subLabel && variant === 'boxed'" class="text-[11px] text-slate-500 mt-0.5">{{ option.subLabel }}</span>
-        </button>
-      </div>
-    </Transition>
+          <button
+            v-for="option in options"
+            :key="option.id"
+            @click="selectOption(option)"
+            :class="[
+              'w-full px-4 py-2 transition-colors flex flex-col',
+              variant === 'boxed' ? 'items-center justify-center text-center' : 'items-start text-left',
+              modelValue === option.id ? 'bg-slate-50 text-bloom-primary' : 'text-slate-700 hover:bg-slate-50'
+            ]"
+          >
+            <span :class="['text-[14px]', modelValue === option.id ? 'font-bold' : 'font-medium']">{{ option.label }}</span>
+            <span v-if="option.subLabel && variant === 'boxed'" class="text-[11px] text-slate-500 mt-0.5">{{ option.subLabel }}</span>
+          </button>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -89,26 +92,30 @@ const selectedOption = computed(() => props.options.find(o => o.id === props.mod
 const selectedLabel = computed(() => selectedOption.value?.label || 'Select...')
 const selectedSubLabel = computed(() => selectedOption.value?.subLabel || '')
 
+const dropdownStyle = ref({})
+
 const toggleDropdown = async () => {
   isOpen.value = !isOpen.value
 
   if (isOpen.value) {
-    // Wait for the DOM to register the click, then calculate position
     await nextTick()
     if (!dropdownRef.value) return
 
     const rect = dropdownRef.value.getBoundingClientRect()
     const windowWidth = window.innerWidth
+    
+    // Set the physical Top position (just below the button)
+    dropdownStyle.value = { top: `${rect.bottom + 8}px` }
 
     if (props.variant === 'boxed') {
-      // Boxed looks best centered directly under the button
-      alignmentClass.value = 'left-1/2 -translate-x-1/2 origin-top'
+      alignmentClass.value = '-translate-x-1/2 origin-top'
+      dropdownStyle.value.left = `${rect.left + (rect.width / 2)}px`
     } else if (rect.left > (windowWidth * 0.6)) {
-      // If the button is on the right 40% of the screen, open to the left
-      alignmentClass.value = 'right-0 origin-top-right'
+      alignmentClass.value = 'origin-top-right'
+      dropdownStyle.value.left = `${rect.right - 192}px` // 192px is w-48
     } else {
-      // If the button is on the left or middle, open to the right (prevents left clipping)
-      alignmentClass.value = 'left-0 origin-top-left'
+      alignmentClass.value = 'origin-top-left'
+      dropdownStyle.value.left = `${rect.left}px`
     }
   }
 }

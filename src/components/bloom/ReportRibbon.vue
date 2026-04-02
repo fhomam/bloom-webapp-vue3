@@ -28,10 +28,15 @@
 
       <div class="flex flex-col items-end justify-center w-1/3 shrink-0 gap-3">
         <div class="flex items-center justify-end gap-3 lg:gap-5">
-          <div v-for="m in ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']" :key="m" class="flex flex-col items-center w-10">
-            <span class="text-[24px] leading-none">{{ getEmoji(m) }}</span>
-            <span class="text-[13px] font-medium text-slate-600 mt-2">{{ getJoyPercent(m) }}</span>
-          </div>
+          <button 
+            v-for="m in ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']" 
+            :key="m" 
+            @click="openEmotionExplorer(m)"
+            class="flex flex-col items-center w-10 group cursor-pointer"
+          >
+            <span class="text-[24px] leading-none group-hover:scale-110 transition-transform">{{ getEmoji(m) }}</span>
+            <span class="text-[13px] font-medium text-slate-600 mt-2 group-hover:text-bloom-primary transition-colors">{{ getJoyPercent(m) }}</span>
+          </button>
         </div>
         <div class="text-[11.5px] font-medium text-slate-400 pr-1">
           Based on {{ safeReviewsAnalyzed }} interactions
@@ -101,10 +106,15 @@
       </div>
 
       <div class="hidden sm:flex md:hidden items-center gap-4 shrink-0">
-        <div v-for="m in ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']" :key="m" class="flex flex-col items-center w-8">
-          <span class="text-[22px] leading-none">{{ getEmoji(m) }}</span>
-          <span class="text-[13px] font-medium text-slate-600 mt-2">{{ getJoyPercent(m) }}</span>
-        </div>
+        <button 
+          v-for="m in ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']" 
+          :key="m" 
+          @click="openEmotionExplorer(m)"
+          class="flex flex-col items-center w-8 group cursor-pointer"
+        >
+          <span class="text-[22px] leading-none group-hover:scale-110 transition-transform">{{ getEmoji(m) }}</span>
+          <span class="text-[13px] font-medium text-slate-600 mt-2 group-hover:text-bloom-primary transition-colors">{{ getJoyPercent(m) }}</span>
+        </button>
         <div class="h-8 w-px bg-slate-200 mx-1"></div>
         <div class="text-[11px] font-medium text-slate-400 leading-tight">
           Based on<br/><b class="text-slate-500">{{ safeReviewsAnalyzed }}</b> interactions
@@ -149,6 +159,14 @@ const formatSourceName = (key) => {
     'web': 'Web Portal'
   }
   return map[key] || toTitleCase(key.replace(/_/g, ' '))
+}
+
+// --- EXPLORATION BINDINGS ---
+const openEmotionExplorer = (metric) => {
+  const newQuery = { ...route.query, exploreEmotion: metric }
+  // Optional cleanup: Clear an issue if they explicitly click an emotion instead
+  delete newQuery.exploreIssue 
+  router.push({ query: newQuery })
 }
 
 // --- DYNAMIC BLOOM DATA ---
@@ -285,13 +303,12 @@ const sourceOptions = computed(() => {
   const baseOptions = [{ id: 'all', label: 'All Sources', subLabel: 'Platforms' }]
   const versions = bloomStore.sourcesWithVersion
   const stats = bloomStore.countryReviewStats
-  const currentCountry = activeCountry.value // e.g., 'us', 'ca', 'all'
+  const currentCountry = activeCountry.value 
   
   if (!versions || typeof versions !== 'object') return baseOptions
   
   const dynamicSources = Object.keys(versions)
     .filter(sourceKey => {
-      // If a specific country is selected, ensure this source actually has >0 reviews for it
       if (currentCountry && currentCountry !== 'all') {
         return stats && stats[sourceKey] && stats[sourceKey][currentCountry] > 0
       }
@@ -300,7 +317,7 @@ const sourceOptions = computed(() => {
     .map(sourceKey => ({
       id: sourceKey,
       label: formatSourceName(sourceKey),
-      subLabel: versions[sourceKey] // The version string
+      subLabel: versions[sourceKey] 
     }))
   
   return [...baseOptions, ...dynamicSources]
@@ -310,14 +327,13 @@ const sourceOptions = computed(() => {
 const countryOptions = computed(() => {
   const baseOptions = [{ id: 'all', label: 'All', subLabel: 'Countries' }]
   const stats = bloomStore.countryReviewStats
-  const currentSource = activeSource.value // e.g., 'apple_app_store', 'google_play', 'all'
+  const currentSource = activeSource.value 
   
   if (!stats || typeof stats !== 'object') return baseOptions
   
   const aggregatedCounts = {}
   
   Object.entries(stats).forEach(([sourceKey, sourceData]) => {
-    // If a specific source is selected, IGNORE all other sources
     if (currentSource && currentSource !== 'all' && sourceKey !== currentSource) {
       return
     }

@@ -163,10 +163,7 @@ const formatSourceName = (key) => {
 
 // --- EXPLORATION BINDINGS ---
 const openEmotionExplorer = (metric) => {
-  const newQuery = { ...route.query, exploreEmotion: metric }
-  // Optional cleanup: Clear an issue if they explicitly click an emotion instead
-  delete newQuery.exploreIssue 
-  router.push({ query: newQuery })
+  ui.navigateWithGrace('interactions', { exploreEmotion: metric }, route, router)
 }
 
 // --- DYNAMIC BLOOM DATA ---

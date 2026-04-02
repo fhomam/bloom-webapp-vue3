@@ -106,8 +106,21 @@ const activePeriodLabel = computed(() => {
 })
 
 // --- FILTER & SEARCH LOGIC ---
-const filteredIssues = computed(() => bloomStore.getFilteredAndSortedIssues(route.query))
+// 1. Isolate the "real" report filters from the UI sidebar parameters
+const filterSignature = computed(() => {
+  const { exploreIssue, exploreEmotion, taxo, ...realFilters } = route.query
+  // Stringify ensures the computed property only registers a change if the actual values change!
+  return JSON.stringify(realFilters)
+})
+
+// 2. The main feed now ONLY recalculates when the filterSignature string changes
+const filteredIssues = computed(() => {
+  const filters = JSON.parse(filterSignature.value)
+  return bloomStore.getFilteredAndSortedIssues(filters)
+})
+
 const searchQuery = ref(route.query.search || '')
+
 const updateSearch = debounce(() => {
   const query = { ...route.query }
   if (searchQuery.value) query.search = searchQuery.value
@@ -198,8 +211,10 @@ const loadDataIfNeeded = async () => {
 }
 
 // --- SIDEBAR & TAB MANAGEMENT ---
-const updateSidebarState = () => {
+// Pass `true` during onMounted so it knows to delay the slide-in!
+const updateSidebarState = (isInitialMount = false) => {
   const hasExplore = !!route.query.exploreIssue || !!route.query.exploreEmotion
+  const hasTaxo = !!route.query.taxo
 
   const tabs = [
     { 
@@ -214,53 +229,62 @@ const updateSidebarState = () => {
     }
   ]
 
-  let activeTab = ui.activeRightTab || 'taxonomy'
-  let isOpen = ui.isRightOpen // Retain the current open/closed state by default!
+  ui.rightTabs = tabs
 
-  if (hasExplore) {
-    activeTab = 'interactions'
-    isOpen = true // Only FORCE open if they specifically click a new explore link
-  } else {
-    // If no explore parameters exist, ensure the UI resets to taxonomy 
-    // so it's ready for the next time they open it
-    if (activeTab === 'interactions') {
-      activeTab = 'taxonomy'
+  // 1. Determine URL Precedence
+  let targetTab = hasExplore ? 'interactions' : (hasTaxo ? 'taxonomy' : 'taxonomy')
+
+  if (isInitialMount) {
+    // 2. DIRECT URL LOAD: Wait for the main dashboard to finish rendering, then slide in gracefully.
+    if (hasExplore || hasTaxo) {
+      setTimeout(() => {
+        ui.activeRightTab = targetTab
+        ui.isRightOpen = true
+      }, 400) // This 400ms delay completely cures the direct-URL boot hiccup
+    } else {
+      ui.activeRightTab = targetTab
     }
+  } else {
+    // 3. NORMAL NAVIGATION: Just sync the active tab based on the URL.
+    // Notice we DO NOT touch ui.isRightOpen here. navigateWithGrace handles opening.
+    // This allows the "Close" button to actually keep the sidebar closed!
+    ui.activeRightTab = targetTab
   }
-
-  ui.configureRightSidebar(tabs, activeTab, isOpen)
 }
 
 // --- LIFECYCLE & WATCHERS ---
 
 // Watch the route parameters AND the query parameters. 
-// If the app, period, OR any filter/explore state changes, trigger our updates synchronously!
+// Watcher 1: Data Engine
+// ONLY fires if the app, period, or actual report filters change. 
+// Completely ignores exploreIssue/exploreEmotion!
 watch(
-() => route.fullPath, 
+  () => [route.params.offeringXid, route.params.periodId, filterSignature.value], 
   () => { 
     loadDataIfNeeded()
-    updateSidebarState() 
-  },
-  { deep: true } // Required so Vue catches inner changes to the route.query object
+  }
+)
+
+// Watcher 2: Sidebar UI Engine
+watch(
+  () => [route.query.exploreIssue, route.query.exploreEmotion, route.query.taxo],
+  () => {
+    updateSidebarState(false) // False = Not the initial mount
+  }
 )
 
 // --- MOUNT ROUTINE ---
 onMounted(() => {
-  // 1. Grab the actual scrolling container from AppLayout.vue
   scrollContainer = document.querySelector('main')
-  
   if (scrollContainer) {
-    // 2. Attach the raw scroll listener
     scrollContainer.addEventListener('scroll', handleScroll)
-    // 3. Fire it once immediately just in case they load halfway down the page
     handleScroll()
   }
   
-  // 4. Initial check to load data
   loadDataIfNeeded()
 
-  // 5. Initialize the sidebar based on the URL the user landed on
-  updateSidebarState()
+  // True = Initial mount (Triggers the 400ms delayed smooth open)
+  updateSidebarState(true) 
 })
 
 onUnmounted(() => {

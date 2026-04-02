@@ -212,11 +212,12 @@ const exactDate = computed(() => {
 
 // --- TAXO EXPLORATION ACTIONS ---
 
-// NEW: Wire up the Sidebar Trigger
+// Wire up the Sidebar Trigger with cleanup
 const openExplorer = () => {
   if (!props.issue.taxo) return
   const safeTaxo = props.issue.taxo.replaceAll(':', '-')
-  router.push({ query: { ...route.query, exploreIssue: safeTaxo } })
+  
+  ui.navigateWithGrace('interactions', { exploreIssue: safeTaxo }, route, router)
 }
 
 const getCategoryTaxo = computed(() => {
@@ -245,16 +246,21 @@ const isThemeActive = (themeId) => route.query.theme === themeId
 const toggleTaxo = (taxo) => {
   if (!taxo) return
   const safeTaxo = taxo.replaceAll(':', '-')
-  const newQuery = { ...route.query }
-  
-  if (newQuery.taxo === safeTaxo) delete newQuery.taxo
-  else {
-    newQuery.taxo = safeTaxo
-    ui.isRightOpen = true 
-    ui.activeRightTab = 'taxonomy' 
+
+  if (route.query.taxo === safeTaxo) {
+    // If turning OFF the taxo filter, just remove it from the URL
+    const newQuery = { ...route.query }
+    delete newQuery.taxo
+    router.push({ query: newQuery })
+  } else {
+    // If turning ON the taxo filter, use grace to prevent jitter, 
+    // and wipe the interaction states so Taxonomy correctly takes precedence!
+    ui.navigateWithGrace('taxonomy', { 
+      taxo: safeTaxo,
+      exploreIssue: null, 
+      exploreEmotion: null 
+    }, route, router)
   }
-  
-  router.push({ query: newQuery })
 }
 
 const toggleCategory = () => toggleTaxo(getCategoryTaxo.value)

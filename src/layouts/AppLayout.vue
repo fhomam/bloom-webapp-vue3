@@ -57,28 +57,34 @@
         
         <aside 
           :class="[
-            ui.isRightOpen ? 'translate-x-0' : 'translate-x-full lg:w-0',
-            'fixed lg:static inset-y-0 right-0 w-80 lg:border-l bg-slate-50 border-slate-200 transition-all duration-300 ease-in-out shrink-0 flex flex-col overflow-hidden z-40 shadow-2xl lg:shadow-none'
+            ui.isRightOpen ? 'translate-x-0 lg:w-80' : 'translate-x-full lg:w-0',
+            'fixed lg:relative inset-y-0 right-0 w-80 lg:border-l bg-slate-50 border-slate-200 transition-all duration-300 ease-in-out shrink-0 overflow-hidden z-40 shadow-2xl lg:shadow-none'
           ]"
         >
-          <div class="flex border-b border-slate-200 shrink-0 min-w-[320px] bg-white overflow-x-auto hide-scrollbar">
-            <button v-for="tab in ui.rightTabs" :key="tab.id" @click="ui.activeRightTab = tab.id" :class="['flex-1 min-w-[120px] py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2', ui.activeRightTab === tab.id ? 'text-bloom-primary border-b-2 border-bloom-primary' : 'text-slate-500 hover:text-slate-800']">
-              <span v-if="tab.icon" v-html="tab.icon" class="w-4 h-4"></span>
-              {{ tab.label }}
-            </button>
+          <div class="w-80 h-full flex flex-col bg-white">
+            
+            <div class="flex border-b border-slate-200 shrink-0 overflow-x-auto hide-scrollbar">
+              <button v-for="tab in ui.rightTabs" :key="tab.id" @click="ui.activeRightTab = tab.id" :class="['flex-1 min-w-[120px] py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2', ui.activeRightTab === tab.id ? 'text-bloom-primary border-b-2 border-bloom-primary' : 'text-slate-500 hover:text-slate-800']">
+                <span v-if="tab.icon" v-html="tab.icon" class="w-4 h-4"></span>
+                {{ tab.label }}
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-hidden flex flex-col relative bg-white">
+            
+              <KeepAlive>
+                <TaxonomyTree v-if="ui.activeRightTab === 'taxonomy' && route.name === 'BloomReport'" class="h-full" />
+              </KeepAlive>
+
+              <KeepAlive>
+                <InteractionExplorer v-if="ui.activeRightTab === 'interactions'" class="h-full" />
+              </KeepAlive>
+              
+              <div v-if="ui.activeRightTab !== 'taxonomy' && ui.activeRightTab !== 'interactions'" class="p-4 text-sm text-slate-500">
+                Currently viewing: <strong class="text-slate-800">{{ ui.activeRightTab }}</strong> panel.
+            </div>
+
           </div>
-
-          <div class="flex-1 overflow-hidden min-w-[320px] bg-white flex flex-col">
-            
-            <div v-if="ui.activeRightTab === 'taxonomy' && route.name === 'BloomReport'" class="h-full p-4">
-              <TaxonomyTree />
-            </div>
-
-            <InteractionExplorer v-else-if="ui.activeRightTab === 'interactions'" />
-            
-            <div v-else class="p-4 text-sm text-slate-500">
-              Currently viewing: <strong class="text-slate-800">{{ ui.activeRightTab }}</strong> panel.
-            </div>
 
           </div>
         </aside>

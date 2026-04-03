@@ -55,9 +55,11 @@
       <div class="w-full px-6 lg:px-10 mt-8 relative z-0">
         <div v-if="filteredIssues.length > 0" class="flex flex-col gap-5 pb-20">
           <IssueCard 
-            v-for="issue in filteredIssues" 
+            v-for="(issue, index) in filteredIssues" 
             :key="issue.id" 
             :issue="issue"
+            :index="index"
+            :total="filteredIssues.length"
           />
         </div>
 

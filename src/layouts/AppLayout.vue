@@ -15,7 +15,7 @@
       </div>
 
       <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-2 px-3 hide-scrollbar">
-        <RouterLink to="/" class="group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative" active-class="bg-slate-800 text-white">
+        <RouterLink :to="dashboardLink" class="group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative" active-class="bg-slate-800 text-white">
           <DashboardIcon class="w-5 h-5 shrink-0" />
           <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Dashboard</span>
         </RouterLink>
@@ -184,6 +184,21 @@ const activeOffering = computed({
       params: newParams,
       query: targetQuery
     })
+  }
+})
+
+// Add this right next to latestReportRoute logic in AppLayout.vue
+const dashboardLink = computed(() => {
+  // We use the exact route name so Vue Router knows when to toggle active-class
+  return {
+    name: 'BloomDashboard',
+    params: {
+      orgXid: route.params.orgXid || 'org_1',
+      offeringType: route.params.offeringType || 'app',
+      offeringXid: route.params.offeringXid,
+      periodType: route.params.periodType || 'quarterly',
+      periodId: route.params.periodId || '2026q1'
+    }
   }
 })
 

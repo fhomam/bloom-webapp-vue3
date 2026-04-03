@@ -60,7 +60,7 @@
           >
             <div class="flex items-center justify-between mb-2">
               <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {{ formatDate(interaction.createdAt) }}
+                {{ formatDate(interaction.updatedAtSource || interaction.createdAt) }}
               </span>
               <span v-if="!selectedDimensionId" class="text-[13px]" :title="interaction._primaryEmotion">
                 {{ getEmojiForMetric(interaction._primaryEmotion) }}
@@ -76,8 +76,12 @@
             ></p>
           </div>
 
-          <div v-if="verbatimFeed.length === 0" class="text-center text-sm text-slate-400 py-10">
-            No verbatim data available.
+          <div v-if="verbatimFeed.length === 0" class="flex flex-col items-center justify-center text-center text-sm text-slate-400 py-12 px-4 bg-white/50 border border-slate-100 border-dashed rounded-xl mt-2">
+            <span class="text-2xl mb-2 grayscale opacity-50">
+              {{ selectedDimension ? selectedDimension.emoji : '📭' }}
+            </span>
+            <span class="font-medium text-slate-500">No recent interactions</span>
+            <span class="text-xs mt-1">No interactions matched this emotion in the past 28 days.</span>
           </div>
         </div>
         
@@ -208,25 +212,32 @@ const smartHighlight = (rawText, joyArray, targetMetric) => {
   return result
 }
 
-// 4. Feed Generator (Default to mixed latest, or filter by click)
+// 4. Feed Generator (Default to mixed latest, or filter by click, BOUND TO 28 DAYS)
 const verbatimFeed = computed(() => {
   let examples = []
-  const seenIds = new Set() // <-- 1. Add a Set to track uniqueness
+  const seenIds = new Set() 
   const issues = bloomStore.allIssues || []
+  
+  const now = Date.now()
+  const dayInMs = 24 * 60 * 60 * 1000
 
   for (const issue of issues) {
     if (!issue.interactions) continue
     for (const interaction of issue.interactions) {
       if (!interaction.analysis?.joy) continue
       
-      // 2. Skip if we've already added this exact interaction
+      // Enforce the 28-day window to match the sparklines
+      const timestamp = new Date(interaction.updatedAtSource || interaction.createdAt).getTime()
+      const daysAgo = Math.floor((now - timestamp) / dayInMs)
+      if (daysAgo < 0 || daysAgo >= 28) continue // Skip anything outside the 28-day window
+
       if (seenIds.has(interaction.id)) continue 
 
       // If a dimension is clicked, only grab that metric
       if (selectedDimensionId.value) {
         if (interaction.analysis.joy.some(j => j.metric === selectedDimensionId.value)) {
           examples.push(interaction)
-          seenIds.add(interaction.id) // 3. Mark as seen
+          seenIds.add(interaction.id) 
         }
       } 
       // If default view, grab interaction and tag it with its highest priority emotion
@@ -236,7 +247,7 @@ const verbatimFeed = computed(() => {
              return dimOrder.indexOf(a.metric) - dimOrder.indexOf(b.metric)
           })
           examples.push({ ...interaction, _primaryEmotion: sortedEmotions[0].metric })
-          seenIds.add(interaction.id) // 3. Mark as seen
+          seenIds.add(interaction.id) 
         }
       }
     }
@@ -244,7 +255,7 @@ const verbatimFeed = computed(() => {
 
   // Sort by newest and grab top 6 unique examples
   return examples
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => new Date(b.updatedAtSource || b.createdAt).getTime() - new Date(a.updatedAtSource || b.createdAt).getTime())
     .slice(0, 6)
 })
 

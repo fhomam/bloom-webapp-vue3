@@ -22,7 +22,7 @@
             <div class="flex flex-col">
               <span class="text-3xl font-extrabold text-slate-900 leading-none group-hover:text-indigo-900 transition-colors">{{ stats.backlog.issues }}</span>
               <div class="flex items-center gap-1.5 mt-1.5">
-                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Issues</span>
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Items</span>
                 <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">+8%</span>
               </div>
             </div>

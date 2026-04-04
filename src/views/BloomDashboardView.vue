@@ -34,6 +34,11 @@
       <div class="col-span-1 lg:col-span-3">
         <PrimaryTrendChart />
       </div>
+
+      <div class="col-span-1 lg:col-span-3">
+        <TopIssuesHighlights />
+      </div>
+
       <div class="col-span-1 lg:col-span-3">
         <JoySparklinesList />
       </div>
@@ -56,6 +61,7 @@ import PrimaryTrendChart from '@/components/dashboard/PrimaryTrendChart.vue'
 import JoySparklinesList from '@/components/dashboard/JoySparklinesList.vue'
 import ExecutiveSummaryStats from '@/components/dashboard/ExecutiveSummaryStats.vue'
 import TopTaxonomyWidget from '@/components/dashboard/TopTaxonomyWidget.vue'
+import TopIssuesHighlights from '@/components/dashboard/TopIssuesHighlights.vue'
 
 const route = useRoute()
 const router = useRouter()

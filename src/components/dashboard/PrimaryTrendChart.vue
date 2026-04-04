@@ -255,7 +255,7 @@ const chartOption = computed(() => {
         type: 'bar',
         stack: 'total-issues',
         barMaxWidth: 40,
-        itemStyle: { color: '#e2e8f0', borderRadius: [4, 4, 0, 0] } // Light slate cap
+        itemStyle: { color: '#94a3b8', borderRadius: [4, 4, 0, 0] } 
       }
     ]
   }

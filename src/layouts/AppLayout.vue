@@ -44,7 +44,11 @@
         </div>
         
         <div class="flex items-center gap-4">
-          <button v-if="ui.rightTabs.length > 0" @click="ui.isRightOpen = !ui.isRightOpen" :class="['p-1.5 rounded-md transition-colors', ui.isRightOpen ? 'bg-bloom-primary text-white' : 'text-slate-400 hover:bg-slate-100']">
+          <button 
+            v-if="ui.rightTabs.length > 0 && route.name !== 'BloomDashboard'" 
+            @click="ui.isRightOpen = !ui.isRightOpen" 
+            :class="['p-1.5 rounded-md transition-colors', ui.isRightOpen ? 'bg-bloom-primary text-white' : 'text-slate-400 hover:bg-slate-100']"
+          >
             <PanelIcon class="w-5 h-5" />
           </button>
         </div>
@@ -57,8 +61,9 @@
         
         <aside 
           :class="[
-            ui.isRightOpen ? 'translate-x-0 lg:w-80' : 'translate-x-full lg:w-0',
-            'fixed lg:relative inset-y-0 right-0 w-80 lg:border-l bg-slate-50 border-slate-200 transition-all duration-300 ease-in-out shrink-0 overflow-hidden z-40 shadow-2xl lg:shadow-none'
+            isSidebarEffectivelyOpen ? 'translate-x-0 lg:w-80' : 'translate-x-full lg:w-0',
+            enableTransitions ? 'transition-all duration-300 ease-in-out' : '', // <-- Conditionally applied
+            'fixed lg:relative inset-y-0 right-0 w-80 lg:border-l bg-slate-50 border-slate-200 shrink-0 overflow-hidden z-40 shadow-2xl lg:shadow-none'
           ]"
         >
           <div class="w-80 h-full flex flex-col bg-white">
@@ -120,6 +125,7 @@ const latestReportRoute = ref('/') // Fallback route until data loads
 const fullBloomsData = ref({}) 
 const lastVisitedMap = ref({}) 
 
+// 1. The 'memory bank wacher'
 watch(
   () => [route.params.offeringXid, route.params.periodType, route.params.periodId, route.query],
   ([xid, pType, pId, currentQuery]) => {
@@ -128,6 +134,24 @@ watch(
     }
   },
   { immediate: true, deep: true }
+)
+
+// 2. The 'layout snap' watcher for sidebar
+const enableTransitions = ref(true)
+
+watch(
+  () => route.name,
+  (newName, oldName) => {
+    // Only snap if the actual page view changed
+    if (newName !== oldName) {
+      enableTransitions.value = false
+      
+      // Re-enable CSS transitions after Vue has painted the new DOM
+      setTimeout(() => {
+        enableTransitions.value = true
+      }, 100)
+    }
+  }
 )
 
 const activeOffering = computed({
@@ -200,6 +224,10 @@ const dashboardLink = computed(() => {
       periodId: route.params.periodId || '2026q1'
     }
   }
+})
+
+const isSidebarEffectivelyOpen = computed(() => {
+  return ui.isRightOpen && route.name !== 'BloomDashboard'
 })
 
 onMounted(async () => {

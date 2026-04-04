@@ -47,6 +47,7 @@ import { reactive, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
 import * as api from '@/services/api' // Required for the base route redirect
+import { useUiStore } from '@/stores/ui'
 
 // Components
 import Dropdown from '@/components/common/Dropdown.vue'
@@ -59,6 +60,9 @@ import TopTaxonomyWidget from '@/components/dashboard/TopTaxonomyWidget.vue'
 const route = useRoute()
 const router = useRouter()
 const bloomStore = useBloomStore()
+
+// Initialize the store
+const ui = useUiStore()
 
 // Global Filter State
 const filters = reactive({
@@ -141,5 +145,8 @@ watch(
 
 onMounted(() => {
   loadDashboardData()
+
+  // Opt-out of the sidebar for the dashboard view
+  ui.configureRightSidebar([], '')
 })
 </script>

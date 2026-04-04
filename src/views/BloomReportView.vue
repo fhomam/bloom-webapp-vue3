@@ -287,6 +287,13 @@ onMounted(() => {
 
   // True = Initial mount (Triggers the 400ms delayed smooth open)
   updateSidebarState(true) 
+
+  // If Pinia already has the sidebar open from a previous visit, skip the animation delay!
+  if (ui.isRightOpen) {
+    updateSidebarState(false) // Run without the initialMount delay
+  } else {
+    updateSidebarState(true)  // Run with the 400ms boot sequence
+  }  
 })
 
 onUnmounted(() => {

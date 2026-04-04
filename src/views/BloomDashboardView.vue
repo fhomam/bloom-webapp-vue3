@@ -42,7 +42,11 @@
       <div class="col-span-1 lg:col-span-3">
         <JoySparklinesList />
       </div>
-      
+
+      <div class="col-span-1 lg:col-span-3">
+        <SourceBreakdownRow />
+      </div>
+
     </div>
   </div>
 </template>
@@ -62,6 +66,7 @@ import JoySparklinesList from '@/components/dashboard/JoySparklinesList.vue'
 import ExecutiveSummaryStats from '@/components/dashboard/ExecutiveSummaryStats.vue'
 import TopTaxonomyWidget from '@/components/dashboard/TopTaxonomyWidget.vue'
 import TopIssuesHighlights from '@/components/dashboard/TopIssuesHighlights.vue'
+import SourceBreakdownRow from '@/components/dashboard/SourceBreakdownRow.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -107,6 +107,9 @@ const bloomStore = useBloomStore()
 // State
 const selectedDimensionId = ref(null)
 
+// Constants
+const INTERACTION_LIST_LIMIT = 100 // High enough to show "all" recent ones, but protects the DOM from crashing
+
 // 1. Fixed Order Configuration
 const dimOrder = ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']
 const dimConfig = {
@@ -233,30 +236,34 @@ const verbatimFeed = computed(() => {
 
       if (seenIds.has(interaction.id)) continue 
 
-      // If a dimension is clicked, only grab that metric
+      // Strictly filter to only include emotions that actually have bits applied
+      const validEmotions = interaction.analysis.joy.filter(j => j.bits && j.bits.length > 0)
+      
+      // If no valid emotions apply to this interaction, skip it entirely
+      if (validEmotions.length === 0) continue
+
+      // If a dimension is clicked, only grab if it contains that specific valid emotion
       if (selectedDimensionId.value) {
-        if (interaction.analysis.joy.some(j => j.metric === selectedDimensionId.value)) {
+        if (validEmotions.some(j => j.metric === selectedDimensionId.value)) {
           examples.push(interaction)
           seenIds.add(interaction.id) 
         }
       } 
-      // If default view, grab interaction and tag it with its highest priority emotion
+      // If default view, grab interaction and tag it with its highest priority valid emotion
       else {
-        if (interaction.analysis.joy.length > 0) {
-          const sortedEmotions = [...interaction.analysis.joy].sort((a, b) => {
-             return dimOrder.indexOf(a.metric) - dimOrder.indexOf(b.metric)
-          })
-          examples.push({ ...interaction, _primaryEmotion: sortedEmotions[0].metric })
-          seenIds.add(interaction.id) 
-        }
+        const sortedEmotions = [...validEmotions].sort((a, b) => {
+           return dimOrder.indexOf(a.metric) - dimOrder.indexOf(b.metric)
+        })
+        examples.push({ ...interaction, _primaryEmotion: sortedEmotions[0].metric })
+        seenIds.add(interaction.id) 
       }
     }
   }
 
-  // Sort by newest and grab top 6 unique examples
+  // Sort by newest and cap at our safe DOM limit
   return examples
-    .sort((a, b) => new Date(b.updatedAtSource || b.createdAt).getTime() - new Date(a.updatedAtSource || b.createdAt).getTime())
-    .slice(0, 6)
+    .sort((a, b) => new Date(b.updatedAtSource || b.createdAt).getTime() - new Date(a.updatedAtSource || a.createdAt).getTime())
+    .slice(0, INTERACTION_LIST_LIMIT)
 })
 
 // 5. Daily ECharts Config

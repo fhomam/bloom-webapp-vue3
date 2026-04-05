@@ -3,7 +3,7 @@
     
     <div class="flex items-center justify-between mb-6">
       <div class="flex flex-col">
-        <h3 class="text-sm font-bold text-slate-800 tracking-tight">Source Breakdown</h3>
+        <h3 class="text-sm font-bold text-slate-800 tracking-tight">Channel Breakdown</h3>
         <span class="text-xs font-medium text-slate-500 mt-0.5">Volume and issue breakdown across channels and regions</span>
       </div>
     </div>

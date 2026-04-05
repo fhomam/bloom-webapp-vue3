@@ -59,8 +59,8 @@
       </RouterLink>
 
       <div v-if="topIssues.length === 0" class="col-span-full bg-white rounded-2xl border border-slate-200 border-dashed p-8 flex flex-col items-center justify-center text-slate-400">
-        <span class="text-2xl mb-2">🎉</span>
-        <span class="text-sm font-semibold">No critical top issues detected.</span>
+        <span class="text-2xl mb-2">📥</span>
+        <span class="text-sm font-semibold">Top will appear here once compiled.</span>
       </div>
 
     </div>

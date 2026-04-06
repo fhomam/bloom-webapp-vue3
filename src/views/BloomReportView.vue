@@ -101,16 +101,16 @@ const safeJoyScore = computed(() => {
   return (typeof score === 'number' ? score : 0).toFixed(2);
 })
 
-// Map the period ID back to a readable label for the sticky bar
+// Dynamically converts whatever periodId is in the URL (e.g. '2026q2') to uppercase
 const activePeriodLabel = computed(() => {
-  const p = route.query.period || '2026q1'
-  return p === '2026q1' ? '2026Q1' : p === '2025q4' ? '2025Q4' : '2025'
+  const pId = route.params.periodId
+  return pId ? pId.toUpperCase() : ''
 })
 
 // --- FILTER & SEARCH LOGIC ---
 // 1. Isolate the "real" report filters from the UI sidebar parameters
 const filterSignature = computed(() => {
-  const { exploreIssue, exploreEmotion, taxo, ...realFilters } = route.query
+  const { exploreIssue, exploreEmotion, ...realFilters } = route.query
   // Stringify ensures the computed property only registers a change if the actual values change!
   return JSON.stringify(realFilters)
 })
@@ -197,14 +197,15 @@ const handleScroll = () => {
 
 // --- DYNAMIC DATA LOADING ---
 const loadDataIfNeeded = async () => {
-  if (!route.params.offeringXid) return
+  // If the core routing params are missing, abort the fetch entirely
+  if (!route.params.offeringXid || !route.params.periodId) return
 
   try {
     await bloomStore.loadReportData({ 
-      orgId: route.params.orgXid || 'org_1', 
+      orgId: route.params.orgXid,       // No hardcoded fallback
       offeringXid: route.params.offeringXid, 
-      bloomType: route.params.periodType || 'quarterly', 
-      bloomKey: route.params.periodId || '2026q1',
+      bloomType: route.params.periodType, // No hardcoded fallback
+      bloomKey: route.params.periodId,    // No hardcoded fallback
       filters: route.query
     })
   } catch (err) {
@@ -270,8 +271,26 @@ watch(
 // Watcher 2: Sidebar UI Engine
 watch(
   () => [route.query.exploreIssue, route.query.exploreEmotion, route.query.taxo],
-  () => {
-    updateSidebarState(false) // False = Not the initial mount
+  ([newIssue, newEmotion, newTaxo], [oldIssue, oldEmotion, oldTaxo]) => {
+    
+    const issueChanged = newIssue !== oldIssue
+    const emotionChanged = newEmotion !== oldEmotion
+    const taxoChanged = newTaxo !== oldTaxo
+
+    // 1. If they clicked an Issue or Emotion, open the Interactions tab
+    if (issueChanged || emotionChanged) {
+      if (newIssue || newEmotion) {
+        ui.activeRightTab = 'interactions'
+        ui.isRightOpen = true
+      }
+    } 
+    // 2. If they clicked a Taxonomy item, open the Taxonomy tab
+    else if (taxoChanged) {
+      if (newTaxo) {
+        ui.activeRightTab = 'taxonomy'
+        ui.isRightOpen = true
+      }
+    }
   }
 )
 

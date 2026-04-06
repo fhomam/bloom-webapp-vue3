@@ -210,7 +210,7 @@ const activePeriodType = computed({
 })
 
 const activePeriodId = computed({
-  get: () => route.params.periodId || '2026q1',
+  get: () => route.params.periodId,
   set: (newId) => {
     if (newId === route.params.periodId) return
     router.push({
@@ -235,7 +235,7 @@ const periodIdOptions = computed(() => {
   const blooms = availableBloomsForOffering.value.filter(b => b.bloomType === currentType)
   
   if (!blooms.length) {
-    const fallback = route.params.periodId || '2026q1'
+    const fallback = route.params.periodId
     return [{ id: fallback, label: fallback.toUpperCase() }]
   }
 

@@ -112,12 +112,13 @@ const timeAgo = (dateString) => {
 
 // --- ROUTING COMPOSERS ---
 const getBaseReportUrl = () => {
-  const org = route.params.orgXid || 'org_1'
-  const oType = route.params.offeringType || 'app'
-  const oXid = route.params.offeringXid || ''
-  const pType = route.params.periodType || 'quarterly'
-  const pId = route.params.periodId || '2026q1'
-  return `/${org}/reports/${oType}/${oXid}/${pType}/${pId}`
+  const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
+  
+  if (!orgXid || !offeringXid || !periodId) {
+    return ''
+  }
+  
+  return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}`
 }
 
 const getReportUrl = () => { 
@@ -125,6 +126,6 @@ const getReportUrl = () => {
 }
 
 const getIssueUrl = (taxo) => {
-  return `${getBaseReportUrl()}?exploreIssue=${taxo}`
+  return `${getBaseReportUrl()}?taxo=${taxo}`
 }
 </script>

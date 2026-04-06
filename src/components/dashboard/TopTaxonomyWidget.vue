@@ -175,16 +175,16 @@ const maxInteractions = computed(() => {
 })
 
 const exploreTaxonomyUrl = computed(() => {
-  const org = route.params.orgXid || 'org_1'
-  const oType = route.params.offeringType || 'app'
-  const oXid = route.params.offeringXid || ''
-  const pType = route.params.periodType || 'quarterly'
-  const pId = route.params.periodId || '2026q1'
+  const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
   
-  const topCategory = aggregatedData.value.categories[0]
+  if (!orgXid || !offeringXid || !periodId) {
+    return ''
+  }
+  
+  const topCategory = aggregatedData.value?.categories?.[0]
   const taxoParam = topCategory ? `?taxo=${topCategory.taxo}` : ''
 
-  return `/${org}/reports/${oType}/${oXid}/${pType}/${pId}${taxoParam}`
+  return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}${taxoParam}`
 })
 
 const formattedNumber = (num) => {

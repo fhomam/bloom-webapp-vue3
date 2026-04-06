@@ -167,10 +167,10 @@ const activeOffering = computed({
   set: (newXid) => {
     if (!newXid || newXid === route.params.offeringXid) return
     
-    // 1. Declare our fallback defaults! (This was missing)
-    let targetType = 'quarterly'
-    let targetId = '2026q1'
-    let targetOfferingType = 'app'
+    // 1. Initialize variables without hardcoded fallbacks
+    let targetType = route.params.periodType
+    let targetId = route.params.periodId
+    let targetOfferingType = route.params.offeringType
     let targetQuery = {} 
 
     const isRoot = !route.name || route.name === 'home'
@@ -180,7 +180,7 @@ const activeOffering = computed({
     const viewType = String(targetRouteName).includes('Dashboard') ? 'dashboard' : 'report'
     const history = lastVisitedMap.value[newXid]?.[viewType]
     
-    // 3. Apply memory or calculate latest available
+    // 3. Apply memory or calculate real latest available
     if (history) {
       targetType = history.pType
       targetId = history.pId
@@ -188,7 +188,7 @@ const activeOffering = computed({
     } else {
       const offeringData = fullBloomsData.value[newXid]
       if (offeringData) {
-        targetOfferingType = offeringData.details?.offeringType || 'app'
+        targetOfferingType = offeringData.details?.offeringType || targetOfferingType
         const blooms = offeringData.blooms || []
         if (blooms.length > 0) {
           const latest = [...blooms].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
@@ -198,23 +198,13 @@ const activeOffering = computed({
       }
     }
 
-    // 4. Construct route payload
+    // 4. Construct strict route payload
     const newParams = { ...route.params }
     
     newParams.offeringXid = newXid
-    
-    if (newParams.offeringType !== undefined || isRoot) {
-      newParams.offeringType = targetOfferingType
-    }
-    
-    if (newParams.periodId !== undefined || isRoot) {
-      newParams.periodType = targetType
-      newParams.periodId = targetId
-    }
-
-    if (isRoot && !newParams.orgXid) {
-      newParams.orgXid = 'org_1' 
-    }
+    if (targetOfferingType) newParams.offeringType = targetOfferingType
+    if (targetType) newParams.periodType = targetType
+    if (targetId) newParams.periodId = targetId
 
     // 5. Execute routing
     router.push({

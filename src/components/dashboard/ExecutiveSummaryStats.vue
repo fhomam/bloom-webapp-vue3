@@ -130,12 +130,15 @@ const bloomStore = useBloomStore()
 
 // URL Composers
 const getBaseReportUrl = () => {
-  const org = route.params.orgXid || 'org_1'
-  const oType = route.params.offeringType || 'app'
-  const oXid = route.params.offeringXid || ''
-  const pType = route.params.periodType || 'quarterly'
-  const pId = route.params.periodId || '2026q1'
-  return `/${org}/reports/${oType}/${oXid}/${pType}/${pId}`
+  const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
+
+  // If we are missing critical routing parameters, return an empty string 
+  // so we don't accidentally navigate to an invalid /undefined/ path.
+  if (!orgXid || !offeringXid || !periodId) {
+    return ''
+  }
+
+  return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}`
 }
 
 const getThemeUrl = (themeId) => `${getBaseReportUrl()}?theme=${themeId}`

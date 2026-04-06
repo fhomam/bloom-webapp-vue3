@@ -44,7 +44,7 @@
             <span v-else class="text-xl">⏱️</span>
             
             <h4 class="text-sm font-bold text-slate-900">
-              {{ selectedDimension ? `Recent ${selectedDimension.label}` : 'Latest Highlights' }}
+              {{ selectedDimension ? `Recent ${selectedDimension.label} Expressions` : 'Latest Highlights' }}
             </h4>
           </div>
           <button v-if="selectedDimensionId" @click.stop="selectedDimensionId = null" class="text-[10px] font-bold text-slate-400 hover:text-slate-600 uppercase tracking-wider bg-white border border-slate-200 px-2 py-1 rounded">
@@ -113,11 +113,11 @@ const INTERACTION_LIST_LIMIT = 100 // High enough to show "all" recent ones, but
 // 1. Fixed Order Configuration
 const dimOrder = ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']
 const dimConfig = {
-  joy:          { id: 'joy', label: 'Joyful', emoji: '✨', color: '#10b981', highlightClass: 'bg-emerald-100 text-emerald-900 font-semibold px-0.5 rounded' },
-  confidence:   { id: 'confidence', label: 'Confident', emoji: '😎', color: '#3b82f6', highlightClass: 'bg-blue-100 text-blue-900 font-semibold px-0.5 rounded' },
-  engagement:   { id: 'engagement', label: 'Engaged', emoji: '👀', color: '#94a3b8', highlightClass: 'bg-slate-200 text-slate-900 font-semibold px-0.5 rounded' },
-  frustration:  { id: 'frustration', label: 'Frustrated', emoji: '😤', color: '#f97316', highlightClass: 'bg-orange-100 text-orange-900 font-semibold px-0.5 rounded' },
-  hopelessness: { id: 'hopelessness', label: 'Hopeless', emoji: '😔', color: '#e11d48', highlightClass: 'bg-rose-100 text-rose-900 font-semibold px-0.5 rounded' }
+  joy:          { id: 'joy', label: 'Joy', emoji: '✨', color: '#10b981', highlightClass: 'bg-emerald-100 text-emerald-900 font-semibold px-0.5 rounded' },
+  confidence:   { id: 'confidence', label: 'Confidence', emoji: '😎', color: '#3b82f6', highlightClass: 'bg-blue-100 text-blue-900 font-semibold px-0.5 rounded' },
+  engagement:   { id: 'engagement', label: 'Engagement', emoji: '👀', color: '#94a3b8', highlightClass: 'bg-slate-200 text-slate-900 font-semibold px-0.5 rounded' },
+  frustration:  { id: 'frustration', label: 'Frustration', emoji: '😤', color: '#f97316', highlightClass: 'bg-orange-100 text-orange-900 font-semibold px-0.5 rounded' },
+  hopelessness: { id: 'hopelessness', label: 'Hopelessness', emoji: '😔', color: '#e11d48', highlightClass: 'bg-rose-100 text-rose-900 font-semibold px-0.5 rounded' }
 }
 
 const selectedDimension = computed(() => selectedDimensionId.value ? dimConfig[selectedDimensionId.value] : null)

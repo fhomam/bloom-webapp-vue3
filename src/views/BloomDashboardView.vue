@@ -126,17 +126,23 @@ const countryOptions = computed(() => {
 
 // --- DATA LOADING & REDIRECT LOGIC ---
 const loadDashboardData = async () => {
+  // If we have strict params, load the data!
   if (route.params.offeringXid && route.params.periodId) {
     await bloomStore.loadDashboardData({ 
-      orgId: route.params.orgXid || 'org_1', 
+      orgId: route.params.orgXid, 
       offeringXid: route.params.offeringXid, 
-      offeringType: route.params.offeringType || 'app',
-      bloomType: route.params.periodType || 'quarterly', 
-      bloomKey: route.params.periodId || '2026q1'
+      offeringType: route.params.offeringType,
+      bloomType: route.params.periodType, 
+      bloomKey: route.params.periodId,
+      filters: {
+        srcId: route.query.srcId,
+        country: route.query.country
+      }
     })
     return
   }
 
+  // If we don't have params, auto-route to the newest available data
   try {
     const bloomsObj = await bloomStore.getAvailableBlooms();
     
@@ -157,15 +163,16 @@ const loadDashboardData = async () => {
         }
       }
 
-      if (latestReport && latestDetails) {
+      // STRICT CHECK: Only route if we successfully found a real period ID
+      if (latestReport && latestReport.bloomKey && latestDetails) {
         router.replace({
           name: 'BloomDashboard', 
           params: {
-            orgXid: route.params.orgXid || 'org_1',
-            offeringType: latestDetails.offeringType || 'app',
+            orgXid: route.params.orgXid, // Trust the router parent to supply this
+            offeringType: latestDetails.offeringType,
             offeringXid: latestDetails.offeringXid,
-            periodType: latestReport.bloomType || 'quarterly',
-            periodId: latestReport.bloomKey || '2026q1'
+            periodType: latestReport.bloomType,
+            periodId: latestReport.bloomKey
           }
         })
       }
@@ -176,7 +183,7 @@ const loadDashboardData = async () => {
 }
 
 watch(
-  () => [route.params.offeringXid, route.params.periodId], 
+  () => [route.params.offeringXid, route.params.periodId, route.query.srcId, route.query.country], 
   () => {
     if (route.params.offeringXid) {
       loadDashboardData()

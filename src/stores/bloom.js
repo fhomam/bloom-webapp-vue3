@@ -143,21 +143,32 @@ export const useBloomStore = defineStore('bloom', () => {
     isLoading.value = true
     error.value = null
     try {
+      // 1. Extract filters safely
+      const { filters = {}, ...basePayload } = payload
+
+      // 2. Base payload for dropdowns/meta (NO FILTERS)
       const corePayload = {
-        orgId: payload.orgId,
-        bloomKey: payload.bloomKey,
-        bloomType: payload.bloomType,
-        offeringXid: payload.offeringXid,
-        offeringType: payload.offeringType || 'app'
+        orgId: basePayload.orgId,
+        bloomKey: basePayload.bloomKey,
+        bloomType: basePayload.bloomType,
+        offeringXid: basePayload.offeringXid,
+        offeringType: basePayload.offeringType || 'app'
       }
 
-      // For the dashboard, we fetch the core data simultaneously
+      // 3. Filtered payload specifically for the dashboard stats
+      const bloomApiPayload = {
+        ...corePayload,
+        country: filters.country && filters.country !== 'all' ? filters.country : undefined,
+        srcId: filters.srcId && filters.srcId !== 'all' ? filters.srcId : undefined
+      }
+
+      // 4. Fetch simultaneously! (Notice api.getBloom uses the filtered payload)
       const [bloomRes, contextRes, themesRes, countryRes, sourceRes] = await Promise.all([
-        api.getBloom(corePayload), // Dashboard needs all issues to calculate aggregate RICE
-        api.getAppOffering(corePayload),
-        api.getAllThemes(corePayload),
-        api.getBloomCountryReviewStats(corePayload),
-        api.getBloomSourcesWithVersion(corePayload)
+        api.getBloom(bloomApiPayload),               // <-- Yields scoped Joy Score & Issues!
+        api.getAppOffering(corePayload),             // Keep core
+        api.getAllThemes(corePayload),               // Keep core
+        api.getBloomCountryReviewStats(corePayload), // Keep core so dropdowns don't shrink
+        api.getBloomSourcesWithVersion(corePayload)  // Keep core
       ])
       
       currentBloom.value = bloomRes

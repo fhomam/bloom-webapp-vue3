@@ -1,13 +1,13 @@
 <template>
-  <div class="bg-white rounded-2xl border border-slate-200 p-5 lg:p-6 shadow-sm grid grid-cols-2 md:grid-cols-[auto_1fr_auto] gap-y-5 gap-x-4 lg:gap-x-8 items-center relative z-10 w-full">
+  <div class="bg-white rounded-2xl border border-slate-200 p-4 min-[480px]:p-5 lg:p-6 shadow-sm grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-[auto_1fr_auto] gap-y-4 min-[480px]:gap-y-5 gap-x-4 lg:gap-x-8 items-center relative z-10 w-full">
     
     <div 
-      class="col-span-1 md:col-span-1 row-start-2 md:row-start-1 flex flex-col gap-1 cursor-pointer group rounded-xl max-w-fit"
+      class="col-span-1 min-[480px]:col-span-1 row-start-2 min-[480px]:row-start-2 md:row-start-1 flex flex-col gap-1 cursor-pointer group rounded-xl max-w-fit mx-auto min-[480px]:mx-0"
       @click="uiState.showJoyDimensions = !uiState.showJoyDimensions"
       title="Click to toggle Emotional Composition"
     >
       <div class="flex items-end gap-2 lg:gap-3 relative">
-        <span class="text-2xl lg:text-5xl font-extrabold text-slate-900 tracking-tighter leading-none">
+        <span class="text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tighter leading-none">
           {{ joyScore }}
         </span>
         <div class="flex flex-col pb-0.5 lg:pb-1">
@@ -48,12 +48,12 @@
       </div>
     </div>
 
-    <div class="col-span-2 md:col-span-1 row-start-1 md:row-start-1 flex flex-col items-center justify-center text-center min-w-0 w-full px-2">
+    <div class="col-span-1 min-[480px]:col-span-2 md:col-span-1 row-start-1 md:row-start-1 flex flex-col items-center justify-center text-center min-w-0 w-full px-1 min-[480px]:px-2">
       <span class="text-[9px] lg:text-[10px] font-extrabold text-bloom-primary uppercase tracking-[0.2em] mb-1.5">
         Executive Dashboard
       </span>
       
-      <h2 class="text-lg lg:text-2xl font-bold text-slate-900 tracking-tight text-center leading-tight mb-3 lg:mb-4 w-full">
+      <h2 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight text-center leading-tight mb-3 lg:mb-4 w-full">
         {{ offeringTitle }}
       </h2>
       
@@ -64,7 +64,7 @@
       </div>
     </div>
 
-    <div class="col-span-1 md:col-span-1 row-start-2 md:row-start-1 flex flex-col xl:flex-row justify-end items-end xl:items-center gap-1 xl:gap-5">
+    <div class="col-span-1 min-[480px]:col-span-1 row-start-3 min-[480px]:row-start-2 md:row-start-1 flex flex-col xl:flex-row justify-center min-[480px]:justify-end items-center min-[480px]:items-end xl:items-center gap-1 xl:gap-5 border-t border-slate-100 min-[480px]:border-0 pt-4 min-[480px]:pt-0 mt-1 min-[480px]:mt-0">
       
       <div class="hidden md:flex flex-col items-end text-right order-2 xl:order-1 mt-1 xl:mt-0">
         <span class="text-[11px] xl:text-[15px] font-bold text-slate-600 xl:text-slate-900 leading-none">{{ companyMeta.name }}</span>
@@ -73,34 +73,24 @@
       
       <div class="h-10 w-px bg-slate-200 hidden xl:block order-2"></div> 
 
-      <div class="flex flex-col items-end justify-center pt-1 order-1 xl:order-3">
+      <div class="flex flex-col items-center min-[480px]:items-end justify-center pt-1 order-1 xl:order-3">
         <div class="flex items-center gap-1.5 lg:gap-2">
           
-          <div class="flex items-end gap-[2px] lg:gap-[3px] h-3.5 lg:h-5 cursor-pointer relative mr-1 group" @click="uiState.showPmiDetails = !uiState.showPmiDetails" title="Click to view quarterly trend">
+          <div class="flex items-end gap-[2px] lg:gap-[3px] h-3.5 lg:h-5 cursor-pointer relative mr-1 group" @click="uiState.showPmiDetails = !uiState.showPmiDetails">
             <div v-for="(q, idx) in pmiHistory" :key="idx" 
                  :class="['w-1 lg:w-1.5 rounded-sm transition-colors', idx === pmiHistory.length - 1 ? 'bg-slate-800' : 'bg-slate-200 group-hover:bg-slate-300']"
                  :style="{ height: `${q.percent}%` }">
             </div>
-            <div v-if="uiState.showPmiDetails" class="absolute top-full right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-3 z-50 flex gap-4 text-xs">
-              <div v-for="(q, idx) in pmiHistory" :key="idx" class="flex flex-col items-center">
-                <span class="text-slate-400 font-medium">{{ q.label }}</span>
-                <span class="text-slate-900 font-bold">{{ q.score }}%</span>
-              </div>
             </div>
-          </div>
 
-          <span class="text-xl lg:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none">{{ pmiScore }}%</span>
+          <span class="text-2xl lg:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none">{{ pmiScore }}%</span>
           
           <span :class="['text-[11px] lg:text-sm font-bold', pmiDelta > 0 ? 'text-rose-500' : 'text-emerald-500']">
             {{ pmiDelta > 0 ? '+' : '' }}{{ pmiDelta }}%
           </span>
-
-          <button class="text-slate-300 hover:text-slate-500 transition-colors cursor-pointer ml-0.5 lg:ml-1" @click.stop="openTwoPager('pmi')" title="View PMI 2-Pager">
-            <svg class="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </button>
         </div>
         
-        <span class="text-[8px] lg:text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1 text-right">
+        <span class="text-[8px] lg:text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1 text-center min-[480px]:text-right">
           Product Market Impedance
         </span>
       </div>

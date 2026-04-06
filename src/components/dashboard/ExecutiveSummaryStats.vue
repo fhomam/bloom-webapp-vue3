@@ -29,7 +29,10 @@
             <div class="text-2xl text-slate-200 font-light mb-1">/</div>
             <div class="flex flex-col">
               <span class="text-xl font-bold text-slate-700 leading-none">{{ formattedNumber(stats.backlog.interactions) }}</span>
-              <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">Interactions</span>
+              <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">
+                <span class="hidden sm:inline">Interactions</span>
+                <span class="sm:hidden">Int.</span>
+              </span>
             </div>
           </div>
         </RouterLink>
@@ -51,7 +54,10 @@
             <div class="text-xl text-slate-200 font-light mb-1">/</div>
             <div class="flex flex-col">
               <span class="text-lg font-bold text-slate-600 leading-none">{{ formattedNumber(stats.general.interactions) }}</span>
-              <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">Interactions</span>
+              <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">
+                <span class="hidden sm:inline">Interactions</span>
+                <span class="sm:hidden">Int.</span>
+              </span>
             </div>
           </div>
         </RouterLink>

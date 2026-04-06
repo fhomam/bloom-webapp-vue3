@@ -3,12 +3,11 @@
 
     <div class="flex items-center justify-between h-8 px-1">
       
-      <div class="flex items-center gap-4">
-        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Channel Scope</span>
-        <div class="w-px h-3 bg-slate-300"></div>
+      <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+        <span class="hidden sm:inline text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Channel Scope</span>
+        <div class="hidden sm:block w-px h-3 bg-slate-300"></div>
         <Dropdown v-model="activeSource" :options="sourceOptions" variant="minimal" prefix="Source:" />
-        <div class="w-px h-3 bg-slate-300"></div>
-        <Dropdown v-model="activeCountry" :options="countryOptions" variant="minimal" prefix="Country:" />
+        <div class="w-px h-3 bg-slate-300 sm:hidden"></div> <Dropdown v-model="activeCountry" :options="countryOptions" variant="minimal" prefix="Country:" />
       </div>
 
       <div class="flex items-center gap-3">

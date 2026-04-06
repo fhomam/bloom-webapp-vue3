@@ -60,6 +60,7 @@ export const useBloomStore = defineStore('bloom', () => {
   const sourcesWithVersion = ref(null)
   const isLoading = ref(false)
   const error = ref(null)
+  const availableBloomsDirectory = ref({})
 
   // --- GETTERS ---
   
@@ -223,18 +224,15 @@ export const useBloomStore = defineStore('bloom', () => {
     }
   }
 
-  // Available Blooms
-  const availableBloomsDirectory = ref({})
-
-  // Add this action
   async function loadAvailableBlooms() {
     try {
       const res = await api.getAvailableBlooms()
       availableBloomsDirectory.value = res?.data?.value || res?.value || res || {}
+      return availableBloomsDirectory.value
     } catch (e) {
       console.error("Failed to load bloom directory", e)
     }
-  }  
+  }
 
   return { 
     currentBloom, offeringContext, themes, countryReviewStats, 

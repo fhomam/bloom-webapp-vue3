@@ -149,6 +149,17 @@ const getPieOption = (dataList, seriesName) => {
     color: colorPalette,
     tooltip: {
       trigger: 'item',
+      position: function (point, params, dom, rect, size) {
+        let x = point[0] + 15;
+        let y = point[1] + 15;
+        // If it bleeds off the right edge, flip it to the left side of the cursor
+        if (x + size.contentSize[0] > size.viewSize[0]) {
+          x = point[0] - size.contentSize[0] - 15;
+        }
+        // If it bleeds off the left edge (or on super small screens), pin it to the left
+        if (x < 10) x = 10;
+        return [x, y];
+      },
       backgroundColor: 'rgba(255, 255, 255, 0.98)',
       borderColor: '#e2e8f0',
       padding: 0,

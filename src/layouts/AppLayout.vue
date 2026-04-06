@@ -20,7 +20,7 @@
           <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Dashboard</span>
         </RouterLink>
         
-        <RouterLink :to="latestReportRoute" class="group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative" active-class="bg-slate-800 text-white">
+        <RouterLink :to="reportLink" class="group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative" active-class="bg-slate-800 text-white">
           <ReportIcon class="w-5 h-5 shrink-0" />
           <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Latest Report</span>
         </RouterLink>
@@ -103,6 +103,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
+import { useBloomStore } from '@/stores/bloom'
 import Dropdown from '@/components/common/Dropdown.vue'
 import * as api from '@/services/api' 
 
@@ -116,6 +117,8 @@ import TaxonomyTree from '@/components/bloom/TaxonomyTree.vue'
 import InteractionExplorer from '@/components/bloom/InteractionExplorer.vue' // <-- IMPORTED
 
 const ui = useUiStore()
+const bloomStore = useBloomStore()
+
 const route = useRoute()
 const router = useRouter()
 
@@ -127,10 +130,15 @@ const lastVisitedMap = ref({})
 
 // 1. The 'memory bank wacher'
 watch(
-  () => [route.params.offeringXid, route.params.periodType, route.params.periodId, route.query],
-  ([xid, pType, pId, currentQuery]) => {
-    if (xid && pType && pId) {
-      lastVisitedMap.value[xid] = { pType, pId, query: { ...currentQuery } }
+  () => [route.params.offeringXid, route.params.periodType, route.params.periodId, route.query, route.name],
+  ([xid, pType, pId, currentQuery, routeName]) => {
+    if (xid && pType && pId && routeName) {
+      if (!lastVisitedMap.value[xid]) {
+        lastVisitedMap.value[xid] = { dashboard: null, report: null }
+      }
+      // Route names containing 'Dashboard' go to the dashboard bucket, otherwise report
+      const viewType = String(routeName).includes('Dashboard') ? 'dashboard' : 'report'
+      lastVisitedMap.value[xid][viewType] = { pType, pId, query: { ...currentQuery } }
     }
   },
   { immediate: true, deep: true }
@@ -159,13 +167,20 @@ const activeOffering = computed({
   set: (newXid) => {
     if (!newXid || newXid === route.params.offeringXid) return
     
+    // 1. Declare our fallback defaults! (This was missing)
     let targetType = 'quarterly'
     let targetId = '2026q1'
     let targetOfferingType = 'app'
     let targetQuery = {} 
 
-    const history = lastVisitedMap.value[newXid]
+    const isRoot = !route.name || route.name === 'home'
+    const targetRouteName = isRoot ? 'BloomDashboard' : route.name
     
+    // 2. Pull from the correct memory bucket based on the current view
+    const viewType = String(targetRouteName).includes('Dashboard') ? 'dashboard' : 'report'
+    const history = lastVisitedMap.value[newXid]?.[viewType]
+    
+    // 3. Apply memory or calculate latest available
     if (history) {
       targetType = history.pType
       targetId = history.pId
@@ -183,9 +198,7 @@ const activeOffering = computed({
       }
     }
 
-    const isRoot = !route.name || route.name === 'home'
-    const targetRouteName = isRoot ? 'BloomDashboard' : route.name
-
+    // 4. Construct route payload
     const newParams = { ...route.params }
     
     newParams.offeringXid = newXid
@@ -203,6 +216,7 @@ const activeOffering = computed({
       newParams.orgXid = 'org_1' 
     }
 
+    // 5. Execute routing
     router.push({
       name: targetRouteName,
       params: newParams,
@@ -211,19 +225,41 @@ const activeOffering = computed({
   }
 })
 
-// Add this right next to latestReportRoute logic in AppLayout.vue
 const dashboardLink = computed(() => {
-  // We use the exact route name so Vue Router knows when to toggle active-class
+  const xid = route.params.offeringXid
+  const history = xid ? lastVisitedMap.value[xid]?.dashboard : null
+
   return {
     name: 'BloomDashboard',
     params: {
       orgXid: route.params.orgXid || 'org_1',
       offeringType: route.params.offeringType || 'app',
-      offeringXid: route.params.offeringXid,
-      periodType: route.params.periodType || 'quarterly',
-      periodId: route.params.periodId || '2026q1'
+      offeringXid: xid,
+      periodType: history ? history.pType : (route.params.periodType || 'quarterly'),
+      periodId: history ? history.pId : (route.params.periodId || '2026q1')
+    },
+    query: history ? history.query : {}
+  }
+})
+
+const reportLink = computed(() => {
+  const xid = route.params.offeringXid
+  const history = xid ? lastVisitedMap.value[xid]?.report : null
+
+  if (history && xid) {
+    return {
+      name: 'BloomReport', // Make sure this matches your router config name!
+      params: {
+        orgXid: route.params.orgXid || 'org_1',
+        offeringType: route.params.offeringType || 'app',
+        offeringXid: xid,
+        periodType: history.pType,
+        periodId: history.pId
+      },
+      query: history.query || {}
     }
   }
+  return latestReportRoute.value // Fallback to your onMounted logic
 })
 
 const isSidebarEffectivelyOpen = computed(() => {
@@ -232,10 +268,13 @@ const isSidebarEffectivelyOpen = computed(() => {
 
 onMounted(async () => {
   try {
-    const rawResponse = await api.getAvailableBlooms()
-    const bloomsObj = rawResponse?.data?.value || rawResponse?.value || rawResponse
+    // 1. Tell the store to go fetch the data
+    await bloomStore.loadAvailableBlooms()
     
-    if (bloomsObj && typeof bloomsObj === 'object') {
+    // 2. Read the newly populated data directly from the store state!
+    const bloomsObj = bloomStore.availableBloomsDirectory
+    
+    if (bloomsObj && Object.keys(bloomsObj).length > 0) {
       
       fullBloomsData.value = bloomsObj 
 

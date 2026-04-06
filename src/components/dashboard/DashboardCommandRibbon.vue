@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center">
+  <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center z-10 relative">
     
     <div 
       class="flex flex-col gap-2 xl:w-1/3 cursor-pointer group p-2 -ml-2 rounded-xl"
@@ -24,10 +24,9 @@
       </div>
       
       <div class="min-h-[40px] flex flex-col justify-center mt-1">
-        
         <div v-if="!uiState.showJoyDimensions" class="text-xs font-medium text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-3">
           Encompasses <strong>{{ formattedInteractions }}</strong> interactions<br />
-          across <strong>{{ stats.countries }}</strong> countries & <strong>{{ stats.sources }}</strong> sources
+          across <strong>{{ availableCountries.length }}</strong> countries & <strong>{{ availableSources.length }}</strong> sources
         </div>
 
         <div v-else class="flex flex-col gap-1.5 w-full pr-4 animate-in fade-in duration-300">
@@ -46,42 +45,47 @@
             <span>✨ {{ dimensions.joy }}%</span>
           </div>
         </div>
-
       </div>
     </div>
 
     <div class="flex flex-col items-center justify-center xl:w-1/3 text-center">
-      
       <span class="text-[10px] font-extrabold text-bloom-primary uppercase tracking-[0.2em] mb-1.5">
         Executive Dashboard
       </span>
-      
-      <h2 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2 leading-none">
+      <h2 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2 leading-none mb-4">
         {{ offeringTitle }}
       </h2>
       
-      <div class="flex items-center text-[15px] font-bold text-slate-800 tracking-tight mt-5">
-        <div class="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity" title="Change Period Type">
-          {{ activePeriodType }}
-          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
-        </div>
-        <span class="mx-2 text-slate-300 font-light">/</span>
-        <div class="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity" title="Change Period">
-          {{ activePeriodId }}
-          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
-        </div>
+      <div class="flex flex-wrap items-center justify-center gap-3 bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3">
+        
+        <Dropdown 
+          v-model="activePeriodType" 
+          :options="periodTypeOptions" 
+          variant="minimal" 
+        />
+
+        <span class="text-slate-300 font-light text-xs">/</span>
+
+        <Dropdown 
+          v-model="activePeriodId" 
+          :options="periodIdOptions" 
+          variant="minimal" 
+          class="uppercase"
+        />
+
       </div>
     </div>
 
     <div class="flex justify-end xl:w-1/3">
       <div class="flex items-center gap-5">
-        
         <div class="flex flex-col items-end text-right hidden sm:flex">
           <span class="text-[15px] font-bold text-slate-900">{{ companyMeta.name }}</span>
           <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">Est. Users: {{ companyMeta.users }}</span>
         </div>
         
-        <div class="h-10 w-px bg-slate-200 hidden sm:block"></div> <div class="flex flex-col items-end justify-center pt-1">
+        <div class="h-10 w-px bg-slate-200 hidden sm:block"></div> 
+
+        <div class="flex flex-col items-end justify-center pt-1">
           <div class="flex items-center gap-2">
             
             <div 
@@ -113,7 +117,6 @@
           </div>
           <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">Product Market Impedance</span>
         </div>
-
       </div>
     </div>
 
@@ -122,10 +125,12 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
+import Dropdown from '@/components/common/Dropdown.vue' // <-- IMPORTED YOUR COMPONENT
 
 const route = useRoute()
+const router = useRouter()
 const bloomStore = useBloomStore()
 
 // --- UI STATE ---
@@ -134,9 +139,116 @@ const uiState = reactive({
   showPmiDetails: false
 })
 
-// --- UTILITIES ---
+// --- FILTER & ROUTING ORCHESTRATION ---
+const isAppOffering = computed(() => route.params.offeringType === 'app' || !route.params.offeringType)
+
+const availableSources = computed(() => {
+  if (!bloomStore.countryReviewStats) return []
+  return Object.keys(bloomStore.countryReviewStats)
+})
+
+const availableCountries = computed(() => {
+  if (!bloomStore.countryReviewStats) return []
+  const unique = new Set()
+  Object.values(bloomStore.countryReviewStats).forEach(sourceMap => {
+    Object.keys(sourceMap).forEach(country => unique.add(country))
+  })
+  return Array.from(unique).sort()
+})
+
+const updateRouteParam = (paramName, newValue) => {
+  const newParams = { ...route.params, [paramName]: newValue }
+  router.push({ params: newParams, query: route.query })
+}
+
+const updateQueryFilter = (queryKey, newValue) => {
+  const newQuery = { ...route.query }
+  if (newValue === 'all') {
+    delete newQuery[queryKey]
+  } else {
+    newQuery[queryKey] = newValue
+  }
+  router.push({ query: newQuery })
+}
+
+// --- DYNAMIC DROPDOWN OPTIONS ---
+
+// Get all blooms for the currently selected app
+const currentOfferingBlooms = computed(() => {
+  const directory = bloomStore.availableBloomsDirectory || {}
+  const appData = directory[route.params.offeringXid]
+  return appData?.blooms || []
+})
+
+// 1. Only show Period Types (Weekly, Monthly, etc) that actually exist for this app
+const periodTypeOptions = computed(() => {
+  const availableTypes = new Set(currentOfferingBlooms.value.map(b => b.bloomType))
+  const map = { weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' }
+  
+  // Sort them logically (assuming you want Yearly -> Weekly order)
+  const order = ['yearly', 'quarterly', 'monthly', 'weekly']
+  return Array.from(availableTypes)
+    .sort((a, b) => order.indexOf(a) - order.indexOf(b))
+    .map(t => ({ id: t, label: map[t] || t }))
+})
+
+// 2. Only show Period IDs that match the selected Period Type
+const periodIdOptions = computed(() => {
+  const filtered = currentOfferingBlooms.value.filter(b => b.bloomType === route.params.periodType)
+  
+  return filtered.map(b => {
+    let displayLabel = b.bloomKey.toUpperCase()
+    
+    // Optional: Add your "Week of..." parsing logic here later!
+    // if (b.bloomType === 'weekly') { displayLabel = formatISOWeek(b.bloomKey) }
+    
+    return {
+      id: b.bloomKey,
+      label: displayLabel
+    }
+  }).sort((a, b) => b.id.localeCompare(a.id)) // Sorts newest first (e.g., 2026Q1 before 2025Q4)
+})
+
+const activePeriodType = computed({
+  get: () => {
+    // 1. Trust the URL first
+    if (route.params.periodType) return route.params.periodType
+    // 2. Fallback to the best available type in our dynamic list
+    return periodTypeOptions.value[0]?.id || 'quarterly'
+  },
+  set: (newType) => {
+    // Critical Fix: When switching types (e.g., Quarter -> Week), 
+    // we MUST find a valid ID for the new type so we don't break the URL.
+    const bloomsForNewType = currentOfferingBlooms.value
+      .filter(b => b.bloomType === newType)
+      .sort((a, b) => b.bloomKey.localeCompare(a.bloomKey)) // Sort newest first
+    
+    const latestValidId = bloomsForNewType[0]?.bloomKey || 'latest'
+
+    router.push({
+      params: { ...route.params, periodType: newType, periodId: latestValidId },
+      query: route.query
+    })
+  }
+})
+
+const activePeriodId = computed({
+  get: () => {
+    if (route.params.periodId) return route.params.periodId
+    return periodIdOptions.value[0]?.id || ''
+  },
+  set: (val) => updateRouteParam('periodId', val)
+})
+
+// --- UTILITIES & FORMATTERS ---
 const formatNumber = (num) => new Intl.NumberFormat('en-US').format(num || 0)
 const formatCompact = (num) => new Intl.NumberFormat('en-US', { notation: "compact" }).format(num || 0)
+
+const formatSource = (src) => {
+  if (src === 'apple_app_store') return 'App Store'
+  if (src === 'google_play') return 'Google Play'
+  return src
+}
 
 const getEmoji = (desc) => {
   const map = {
@@ -150,9 +262,7 @@ const getEmoji = (desc) => {
   return map[desc] || '😶'
 }
 
-const openTwoPager = (type) => {
-  console.log(`Routing to ${type} 2-pager...`)
-}
+const openTwoPager = (type) => console.log(`Routing to ${type} 2-pager...`)
 
 // --- DYNAMIC JOY DATA ---
 const joyScore = computed(() => {
@@ -165,7 +275,6 @@ const joyEmoji = computed(() => getEmoji(joyLabel.value))
 
 const formattedInteractions = computed(() => formatNumber(bloomStore.joyStats?.metrics?.reviewsAnalyzed))
 
-// Emotional Dimensions (%)
 const dimensions = computed(() => {
   const m = bloomStore.joyStats?.metrics
   if (!m) return { hopelessness: 0, frustration: 0, engagement: 0, confidence: 0, joy: 0 }
@@ -182,40 +291,14 @@ const dimensions = computed(() => {
   }
 })
 
-// --- DYNAMIC META DATA (Sources & Countries) ---
-const stats = computed(() => {
-  const rawStats = bloomStore.countryReviewStats
-  if (!rawStats) return { sources: 0, countries: 0 }
-
-  const sourceKeys = Object.keys(rawStats)
-  const uniqueCountries = new Set()
-
-  sourceKeys.forEach(source => {
-    Object.keys(rawStats[source] || {}).forEach(country => uniqueCountries.add(country))
-  })
-
-  return {
-    sources: sourceKeys.length,
-    countries: uniqueCountries.size
-  }
-})
-
-// --- CONTEXT & PERIOD ---
+// --- CONTEXT & META DATA ---
 const offeringTitle = computed(() => bloomStore.offeringContext?.name || 'Loading...')
 const companyMeta = computed(() => ({
   name: bloomStore.offeringContext?.developer?.name || 'Unknown Developer',
-  // Converts e.g. 352444758 into "352M"
   users: bloomStore.offeringContext?.installs ? formatCompact(bloomStore.offeringContext.installs) : 'Unknown'
 }))
 
-const activePeriodType = computed(() => {
-  const pt = route.params.periodType || 'quarterly'
-  return pt.charAt(0).toUpperCase() + pt.slice(1)
-})
-
-const activePeriodId = computed(() => (route.params.periodId || '2026Q1').toUpperCase())
-
-// --- MOCKED PMI DATA (Pending Formula!) ---
+// --- MOCKED PMI DATA ---
 const pmiScore = ref(3.2)
 const pmiDelta = ref(+0.4)
 const pmiHistory = ref([

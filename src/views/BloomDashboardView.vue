@@ -4,11 +4,11 @@
     <div class="flex items-center justify-between h-8 px-1">
       
       <div class="flex items-center gap-4">
-        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Global Scope</span>
+        <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Channel Scope</span>
         <div class="w-px h-3 bg-slate-300"></div>
-        <Dropdown v-model="filters.source" :options="filterOptions.source" variant="minimal" prefix="Source:" />
+        <Dropdown v-model="activeSource" :options="sourceOptions" variant="minimal" prefix="Source:" />
         <div class="w-px h-3 bg-slate-300"></div>
-        <Dropdown v-model="filters.country" :options="filterOptions.country" variant="minimal" prefix="Country:" />
+        <Dropdown v-model="activeCountry" :options="countryOptions" variant="minimal" prefix="Country:" />
       </div>
 
       <div class="flex items-center gap-3">
@@ -52,10 +52,9 @@
 </template>
 
 <script setup>
-import { reactive, watch, onMounted } from 'vue'
+import { reactive, watch, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
-import * as api from '@/services/api' // Required for the base route redirect
 import { useUiStore } from '@/stores/ui'
 
 // Components
@@ -71,26 +70,64 @@ import SourceBreakdownRow from '@/components/dashboard/SourceBreakdownRow.vue'
 const route = useRoute()
 const router = useRouter()
 const bloomStore = useBloomStore()
-
-// Initialize the store
 const ui = useUiStore()
 
-// Global Filter State
-const filters = reactive({
-  source: 'all',
-  country: 'all'
+// --- FILTER & ROUTING ORCHESTRATION ---
+const formatSource = (src) => {
+  if (src === 'apple_app_store') return 'App Store'
+  if (src === 'google_play') return 'Google Play'
+  return src
+}
+
+const updateQueryFilter = (queryKey, newValue) => {
+  const newQuery = { ...route.query }
+  if (newValue === 'all') {
+    delete newQuery[queryKey]
+  } else {
+    newQuery[queryKey] = newValue
+  }
+  router.push({ query: newQuery })
+}
+
+// URL-bound reactive properties
+const activeSource = computed({
+  get: () => route.query.srcId || 'all',
+  set: (val) => updateQueryFilter('srcId', val)
 })
 
-const filterOptions = {
-  source: [{ id: 'all', label: 'All' }, { id: 'apple', label: 'App Store' }, { id: 'google', label: 'Google Play' }],
-  country: [{ id: 'all', label: 'All' }, { id: 'us', label: 'United States' }, { id: 'gb', label: 'United Kingdom' }]
-}
+const activeCountry = computed({
+  get: () => route.query.country || 'all',
+  set: (val) => updateQueryFilter('country', val)
+})
+
+// Dynamic options mapped from the store
+const sourceOptions = computed(() => {
+  const opts = [{ id: 'all', label: 'All' }]
+  if (bloomStore.countryReviewStats) {
+    Object.keys(bloomStore.countryReviewStats).forEach(src => {
+      opts.push({ id: src, label: formatSource(src) })
+    })
+  }
+  return opts
+})
+
+const countryOptions = computed(() => {
+  const opts = [{ id: 'all', label: 'All' }]
+  if (bloomStore.countryReviewStats) {
+    const unique = new Set()
+    Object.values(bloomStore.countryReviewStats).forEach(sourceMap => {
+      Object.keys(sourceMap).forEach(country => unique.add(country))
+    })
+    Array.from(unique).sort().forEach(code => {
+      opts.push({ id: code, label: code.toUpperCase() })
+    })
+  }
+  return opts
+})
 
 // --- DATA LOADING & REDIRECT LOGIC ---
 const loadDashboardData = async () => {
-  // SCENARIO A: URL has parameters, fetch the data directly
   if (route.params.offeringXid && route.params.periodId) {
-    // Note: Make sure `loadDashboardData` is implemented in your bloom.js store!
     await bloomStore.loadDashboardData({ 
       orgId: route.params.orgXid || 'org_1', 
       offeringXid: route.params.offeringXid, 
@@ -101,16 +138,13 @@ const loadDashboardData = async () => {
     return
   }
 
-  // SCENARIO B: Hit the bare root route. Find latest offering and redirect!
   try {
-    const rawResponse = await api.getAvailableBlooms()
-    const bloomsObj = rawResponse?.data?.value || rawResponse?.value || rawResponse
+    const bloomsObj = await bloomStore.getAvailableBlooms();
     
     if (bloomsObj && typeof bloomsObj === 'object') {
       let latestReport = null
       let latestDetails = null
 
-      // Find the absolute newest report across all offerings
       for (const [xid, offeringData] of Object.entries(bloomsObj)) {
         const reports = offeringData?.blooms || []
         for (const report of reports) {
@@ -124,10 +158,9 @@ const loadDashboardData = async () => {
         }
       }
 
-      // Redirect to the fully populated URL
       if (latestReport && latestDetails) {
         router.replace({
-          name: 'BloomDashboard', // This must match the name in your router/index.js
+          name: 'BloomDashboard', 
           params: {
             orgXid: route.params.orgXid || 'org_1',
             offeringType: latestDetails.offeringType || 'app',
@@ -143,7 +176,6 @@ const loadDashboardData = async () => {
   }
 }
 
-// Re-fetch if the URL parameters change (e.g., user selects a new app in AppLayout)
 watch(
   () => [route.params.offeringXid, route.params.periodId], 
   () => {
@@ -156,8 +188,6 @@ watch(
 
 onMounted(() => {
   loadDashboardData()
-
-  // Opt-out of the sidebar for the dashboard view
   ui.configureRightSidebar([], '')
 })
 </script>

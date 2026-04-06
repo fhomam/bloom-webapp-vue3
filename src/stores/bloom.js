@@ -223,9 +223,23 @@ export const useBloomStore = defineStore('bloom', () => {
     }
   }
 
+  // Available Blooms
+  const availableBloomsDirectory = ref({})
+
+  // Add this action
+  async function loadAvailableBlooms() {
+    try {
+      const res = await api.getAvailableBlooms()
+      availableBloomsDirectory.value = res?.data?.value || res?.value || res || {}
+    } catch (e) {
+      console.error("Failed to load bloom directory", e)
+    }
+  }  
+
   return { 
-    currentBloom, offeringContext, themes, countryReviewStats, sourcesWithVersion, isLoading, error,
-    allIssues, joyStats, taxoStats, getFilteredAndSortedIssues,
-    loadReportData, loadDashboardData
+    currentBloom, offeringContext, themes, countryReviewStats, 
+    sourcesWithVersion, isLoading, error, allIssues, joyStats, 
+    taxoStats, getFilteredAndSortedIssues,loadReportData, 
+    loadDashboardData, availableBloomsDirectory,loadAvailableBlooms
   }
 })

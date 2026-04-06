@@ -7,6 +7,8 @@
         <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
           Trend Analysis
         </h3>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Trailing 12 Months</span>
+        
         <div class="flex items-baseline gap-3">
           <span class="text-3xl font-extrabold text-slate-900 tracking-tight leading-none">
             {{ activeMetric === 'joy' ? currentJoyAverage : (activeMetric === 'volume' ? currentVolumeTotal : currentIssuesTotal) }}
@@ -261,8 +263,15 @@ const chartOption = computed(() => {
   }
 
   return {
-    grid: { top: isIssues ? 35 : 10, right: 10, bottom: 24, left: 45, containLabel: true },
-    legend: { 
+    grid: { 
+      top: isIssues ? 35 : 10, 
+      right: 10, 
+      bottom: 24, 
+      left: 45, 
+      outerBoundsMode: 'same', 
+      outerBoundsContain: 'axisLabel' 
+    },
+    legend: {
       show: isIssues, 
       top: 0,
       right: 10,

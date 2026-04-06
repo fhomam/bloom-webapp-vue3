@@ -1,11 +1,11 @@
 <template>
   <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col h-full w-full">
     
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">
-        Emotional Momentum
-      </h3>
-      <span class="text-xs font-medium text-slate-400">Daily 28-Day Trend</span>
+    <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
+      <div class="flex flex-col">
+        <h3 class="text-sm font-bold text-slate-800 tracking-tight">Emotional Trajectory</h3>
+        <span class="text-xs font-medium text-slate-500 mt-0.5">Rolling 28-day window</span>
+      </div>
     </div>
 
     <div class="flex flex-col lg:flex-row gap-8 min-h-[400px]">

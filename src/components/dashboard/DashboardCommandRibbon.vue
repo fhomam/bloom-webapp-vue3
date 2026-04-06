@@ -1,30 +1,30 @@
 <template>
-  <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center z-10 relative">
+  <div class="bg-white rounded-2xl border border-slate-200 p-5 lg:p-6 shadow-sm grid grid-cols-2 md:grid-cols-[auto_1fr_auto] gap-y-5 gap-x-4 lg:gap-x-8 items-center relative z-10 w-full">
     
     <div 
-      class="flex flex-col gap-2 xl:w-1/3 cursor-pointer group p-2 -ml-2 rounded-xl"
+      class="col-span-1 md:col-span-1 row-start-2 md:row-start-1 flex flex-col gap-1 cursor-pointer group rounded-xl max-w-fit"
       @click="uiState.showJoyDimensions = !uiState.showJoyDimensions"
       title="Click to toggle Emotional Composition"
     >
-      <div class="flex items-end gap-3 relative">
-        <span class="text-5xl font-extrabold text-slate-900 tracking-tighter leading-none">
+      <div class="flex items-end gap-2 lg:gap-3 relative">
+        <span class="text-2xl lg:text-5xl font-extrabold text-slate-900 tracking-tighter leading-none">
           {{ joyScore }}
         </span>
-        <div class="flex flex-col pb-1">
+        <div class="flex flex-col pb-0.5 lg:pb-1">
           <div class="flex items-center gap-1.5">
-            <span class="text-2xl leading-none">{{ joyEmoji }}</span>
+            <span class="text-base lg:text-2xl leading-none">{{ joyEmoji }}</span>
             <button class="text-slate-300 hover:text-slate-500 transition-colors cursor-pointer" @click.stop="openTwoPager('joy')" title="View Joy Score 2-Pager">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <svg class="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </button>
           </div>
-          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
+          <span class="text-[9px] lg:text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
             {{ joyLabel }}
           </span>
         </div>
       </div>
       
-      <div class="min-h-[40px] flex flex-col justify-center mt-1">
-        <div v-if="!uiState.showJoyDimensions" class="text-xs font-medium text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-3">
+      <div class="hidden md:flex min-h-[40px] flex-col justify-center mt-1">
+        <div v-if="!uiState.showJoyDimensions" class="text-[11px] lg:text-xs font-medium text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-3">
           Encompasses <strong>{{ formattedInteractions }}</strong> interactions<br />
           across <strong>{{ availableCountries.length }}</strong> countries & <strong>{{ availableSources.length }}</strong> sources
         </div>
@@ -37,7 +37,7 @@
             <div :style="{ width: `${dimensions.confidence}%` }" class="bg-blue-400"></div>
             <div :style="{ width: `${dimensions.joy}%` }" class="bg-emerald-400"></div>
           </div>
-          <div class="flex justify-between w-full text-[14px] font-medium text-slate-400">
+          <div class="flex justify-between w-full text-[10px] lg:text-[12px] font-medium text-slate-400">
             <span>😔 {{ dimensions.hopelessness }}%</span>
             <span>😤 {{ dimensions.frustration }}%</span>
             <span>👀 {{ dimensions.engagement }}%</span>
@@ -48,78 +48,64 @@
       </div>
     </div>
 
-    <div class="flex flex-col items-center justify-center xl:w-1/3 text-center">
-      <span class="text-[10px] font-extrabold text-bloom-primary uppercase tracking-[0.2em] mb-1.5">
+    <div class="col-span-2 md:col-span-1 row-start-1 md:row-start-1 flex flex-col items-center justify-center text-center min-w-0 w-full px-2">
+      <span class="text-[9px] lg:text-[10px] font-extrabold text-bloom-primary uppercase tracking-[0.2em] mb-1.5">
         Executive Dashboard
       </span>
-      <h2 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2 leading-none mb-4">
+      
+      <h2 class="text-lg lg:text-2xl font-bold text-slate-900 tracking-tight text-center leading-tight mb-3 lg:mb-4 w-full">
         {{ offeringTitle }}
       </h2>
       
-      <div class="flex flex-wrap items-center justify-center gap-3 bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-3">
-        
-        <Dropdown 
-          v-model="activePeriodType" 
-          :options="periodTypeOptions" 
-          variant="minimal" 
-        />
-
+      <div class="flex flex-wrap items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-lg py-1 lg:py-1.5 px-2 lg:px-3 w-fit">
+        <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" />
         <span class="text-slate-300 font-light text-xs">/</span>
-
-        <Dropdown 
-          v-model="activePeriodId" 
-          :options="periodIdOptions" 
-          variant="minimal" 
-          class="uppercase"
-        />
-
+        <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="uppercase" />
       </div>
     </div>
 
-    <div class="flex justify-end xl:w-1/3">
-      <div class="flex items-center gap-5">
-        <div class="flex flex-col items-end text-right hidden sm:flex">
-          <span class="text-[15px] font-bold text-slate-900">{{ companyMeta.name }}</span>
-          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">Est. Users: {{ companyMeta.users }}</span>
-        </div>
-        
-        <div class="h-10 w-px bg-slate-200 hidden sm:block"></div> 
+    <div class="col-span-1 md:col-span-1 row-start-2 md:row-start-1 flex flex-col xl:flex-row justify-end items-end xl:items-center gap-1 xl:gap-5">
+      
+      <div class="hidden md:flex flex-col items-end text-right order-2 xl:order-1 mt-1 xl:mt-0">
+        <span class="text-[11px] xl:text-[15px] font-bold text-slate-600 xl:text-slate-900 leading-none">{{ companyMeta.name }}</span>
+        <span class="text-[9px] xl:text-[10px] font-bold text-slate-400 xl:text-slate-500 uppercase tracking-wider mt-0.5">Est. Users: {{ companyMeta.users }}</span>
+      </div>
+      
+      <div class="h-10 w-px bg-slate-200 hidden xl:block order-2"></div> 
 
-        <div class="flex flex-col items-end justify-center pt-1">
-          <div class="flex items-center gap-2">
-            
-            <div 
-              class="flex items-end gap-[3px] h-5 cursor-pointer relative mr-1 group" 
-              @click="uiState.showPmiDetails = !uiState.showPmiDetails"
-              title="Click to view quarterly trend"
-            >
-              <div v-for="(q, idx) in pmiHistory" :key="idx" 
-                   :class="['w-1.5 rounded-sm transition-colors', idx === pmiHistory.length - 1 ? 'bg-slate-800' : 'bg-slate-200 group-hover:bg-slate-300']"
-                   :style="{ height: `${q.percent}%` }">
-              </div>
-
-              <div v-if="uiState.showPmiDetails" class="absolute top-full right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-3 z-50 flex gap-4 text-xs">
-                <div v-for="(q, idx) in pmiHistory" :key="idx" class="flex flex-col items-center">
-                  <span class="text-slate-400 font-medium">{{ q.label }}</span>
-                  <span class="text-slate-900 font-bold">{{ q.score }}%</span>
-                </div>
+      <div class="flex flex-col items-end justify-center pt-1 order-1 xl:order-3">
+        <div class="flex items-center gap-1.5 lg:gap-2">
+          
+          <div class="flex items-end gap-[2px] lg:gap-[3px] h-3.5 lg:h-5 cursor-pointer relative mr-1 group" @click="uiState.showPmiDetails = !uiState.showPmiDetails" title="Click to view quarterly trend">
+            <div v-for="(q, idx) in pmiHistory" :key="idx" 
+                 :class="['w-1 lg:w-1.5 rounded-sm transition-colors', idx === pmiHistory.length - 1 ? 'bg-slate-800' : 'bg-slate-200 group-hover:bg-slate-300']"
+                 :style="{ height: `${q.percent}%` }">
+            </div>
+            <div v-if="uiState.showPmiDetails" class="absolute top-full right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-3 z-50 flex gap-4 text-xs">
+              <div v-for="(q, idx) in pmiHistory" :key="idx" class="flex flex-col items-center">
+                <span class="text-slate-400 font-medium">{{ q.label }}</span>
+                <span class="text-slate-900 font-bold">{{ q.score }}%</span>
               </div>
             </div>
-
-            <span class="text-[28px] font-extrabold text-slate-900 tracking-tight leading-none">{{ pmiScore }}%</span>
-            <span :class="['text-sm font-bold', pmiDelta > 0 ? 'text-rose-500' : 'text-emerald-500']">
-              {{ pmiDelta > 0 ? '+' : '' }}{{ pmiDelta }}%
-            </span>
-
-            <button class="text-slate-300 hover:text-slate-500 transition-colors cursor-pointer ml-1" @click.stop="openTwoPager('pmi')" title="View PMI 2-Pager">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </button>
           </div>
-          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">Product Market Impedance</span>
-        </div>
-      </div>
-    </div>
 
+          <span class="text-xl lg:text-[28px] font-extrabold text-slate-900 tracking-tight leading-none">{{ pmiScore }}%</span>
+          
+          <span :class="['text-[11px] lg:text-sm font-bold', pmiDelta > 0 ? 'text-rose-500' : 'text-emerald-500']">
+            {{ pmiDelta > 0 ? '+' : '' }}{{ pmiDelta }}%
+          </span>
+
+          <button class="text-slate-300 hover:text-slate-500 transition-colors cursor-pointer ml-0.5 lg:ml-1" @click.stop="openTwoPager('pmi')" title="View PMI 2-Pager">
+            <svg class="w-3.5 h-3.5 lg:w-4 lg:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </button>
+        </div>
+        
+        <span class="text-[8px] lg:text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1 text-right">
+          Product Market Impedance
+        </span>
+      </div>
+
+    </div>
   </div>
 </template>
 

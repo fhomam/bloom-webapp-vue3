@@ -290,7 +290,7 @@ const activeCountry = createUrlModel('country', 'all')
 
 // --- DYNAMIC DROPDOWN OPTIONS ---
 const classOptions = [
-  { id: 'all', label: 'All Issues' }, 
+  { id: 'all', label: 'All Packets' }, 
   { id: 'backlog-candidate', label: 'Backlog Candidates' }, 
   { id: 'non-actionable', label: 'General Feedback' }
 ]

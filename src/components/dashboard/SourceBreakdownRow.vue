@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between mb-6">
       <div class="flex flex-col">
         <h3 class="text-sm font-bold text-slate-800 tracking-tight">Channel Breakdown</h3>
-        <span class="text-xs font-medium text-slate-500 mt-0.5">Volume and issue breakdown across channels and regions</span>
+        <span class="text-xs font-medium text-slate-500 mt-0.5">Volume and packet breakdown across channels and regions</span>
       </div>
     </div>
 
@@ -179,7 +179,7 @@ const getPieOption = (dataList, seriesName) => {
               </div>
               <div class="flex flex-col gap-1 text-[11px] font-medium text-slate-500 border-t border-slate-100 pt-2 mt-1">
                 <div class="flex justify-between"><span>Backlog Candidates</span> <span class="text-indigo-600 font-bold">${d.actionable}</span></div>
-                <div class="flex justify-between"><span>General Clusters</span> <span class="text-slate-700 font-bold">${d.general}</span></div>
+                <div class="flex justify-between"><span>General Feedback</span> <span class="text-slate-700 font-bold">${d.general}</span></div>
               </div>
             </div>
           </div>

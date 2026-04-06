@@ -24,7 +24,7 @@
         
         <div class="flex p-1 bg-slate-100 rounded-lg">
           <button 
-            v-for="metric in [{ id: 'joy', label: 'Joy Score' }, { id: 'volume', label: 'Volume' }, { id: 'issues', label: 'Issues' }]"
+            v-for="metric in [{ id: 'joy', label: 'Joy Score' }, { id: 'volume', label: 'Volume' }, { id: 'issues', label: 'Packets' }]"
             :key="metric.id"
             @click="activeMetric = metric.id"
             :class="['px-3 py-1 text-xs font-bold rounded-md transition-all', activeMetric === metric.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700']"

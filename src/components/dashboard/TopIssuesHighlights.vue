@@ -7,7 +7,7 @@
         <span class="text-xs font-medium text-slate-500 mt-0.5">Current period</span>
       </div>
       <RouterLink :to="getReportUrl()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1">
-        View All Issues
+        View All Top Issues
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
       </RouterLink>
     </div>
@@ -120,7 +120,9 @@ const getBaseReportUrl = () => {
   return `/${org}/reports/${oType}/${oXid}/${pType}/${pId}`
 }
 
-const getReportUrl = () => getBaseReportUrl()
+const getReportUrl = () => { 
+  return `${getBaseReportUrl()}?theme=top-issue` 
+}
 
 const getIssueUrl = (taxo) => {
   return `${getBaseReportUrl()}?exploreIssue=${taxo}`

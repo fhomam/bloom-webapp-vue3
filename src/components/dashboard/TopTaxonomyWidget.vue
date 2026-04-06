@@ -10,15 +10,15 @@
 
     <div class="flex p-1 bg-slate-100 rounded-lg mb-4 self-start shrink-0">
       <button 
-        v-for="tab in ['categories', 'topics', 'issues']" 
-        :key="tab"
-        @click="activeTab = tab"
+        v-for="tab in taxonomyTabs" 
+        :key="tab.id"
+        @click="activeTab = tab.id"
         :class="[
           'px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all', 
-          activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          activeTab === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
         ]"
       >
-        {{ tab }}
+        {{ tab.label }}
       </button>
     </div>
 
@@ -45,13 +45,10 @@
             </span>
             
             <span v-if="item.type === 'category'" class="text-[10px] text-slate-500 font-medium truncate">
-              {{ item.topicCount }} Topics &bull; {{ item.issueCount }} Issues
+              {{ item.topicCount }} {{ item.topicCount === 1 ? 'Topic' : 'Topics' }} &bull; {{ item.issueCount }} {{ item.issueCount === 1 ? 'Packet' : 'Packets' }}
             </span>
             <span v-else-if="item.type === 'topic'" class="text-[10px] text-slate-500 font-medium truncate">
-              {{ item.issueCount }} Issues &bull; <span class="text-slate-400">In {{ item.parentTitle }}</span>
-            </span>
-            <span v-else class="text-[10px] text-slate-400 font-medium truncate">
-              In {{ item.parentTitle }}
+              {{ item.issueCount }} {{ item.issueCount === 1 ? 'Packet' : 'Packets' }} &bull; <span class="text-slate-400">In {{ item.parentTitle }}</span>
             </span>
               
             <span class="text-[9px] text-slate-300 group-hover:text-slate-500 font-mono truncate transition-colors">
@@ -96,6 +93,13 @@ const route = useRoute()
 const bloomStore = useBloomStore()
 
 const activeTab = ref('categories')
+
+// Map the internal data keys to the new UI labels
+const taxonomyTabs = [
+  { id: 'categories', label: 'Categories' },
+  { id: 'topics', label: 'Topics' },
+  { id: 'issues', label: 'Packets' } // Keeps internal logic intact!
+]
 
 // --- DATA ENGINE: Aggregation & Sub-item Counting ---
 const aggregatedData = computed(() => {

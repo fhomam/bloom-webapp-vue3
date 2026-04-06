@@ -2,9 +2,19 @@
   <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col h-full w-full">
     
     <div class="flex items-center justify-between mb-6">
-      <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">
-        Categorization & Actionability
-      </h3>
+      <div class="flex items-center gap-2">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          Categorization & Actionability
+        </h3>
+        <div 
+          class="cursor-help text-slate-300 hover:text-slate-500 transition-colors" 
+          title="User interactions are grouped into auto-generated 'Packets' and classified by their actionability."
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+      </div>
       <span class="text-xs font-medium text-slate-400">Current Period</span>
     </div>
 
@@ -18,15 +28,17 @@
             <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-wider rounded group-hover:bg-indigo-200 transition-colors">Actionable</span>
           </div>
           
-          <div class="flex items-end gap-4 mt-1">
+          <div class="flex items-end gap-4 mt-1 flex-wrap sm:flex-nowrap">
             <div class="flex flex-col">
               <span class="text-3xl font-extrabold text-slate-900 leading-none group-hover:text-indigo-900 transition-colors">{{ stats.backlog.issues }}</span>
               <div class="flex items-center gap-1.5 mt-1.5">
-                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Items</span>
+                <div class="flex items-center gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  {{ stats.backlog.issues === 1 ? 'Packet' : 'Packets' }}
+                </div>
                 <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">+8%</span>
               </div>
             </div>
-            <div class="text-2xl text-slate-200 font-light mb-1">/</div>
+            <div class="text-2xl text-slate-200 font-light mb-1 hidden sm:block">/</div>
             <div class="flex flex-col">
               <span class="text-xl font-bold text-slate-700 leading-none">{{ formattedNumber(stats.backlog.interactions) }}</span>
               <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">
@@ -43,15 +55,17 @@
             <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded">Contextual</span>
           </div>
           
-          <div class="flex items-end gap-4 mt-1">
+          <div class="flex items-end gap-4 mt-1 flex-wrap sm:flex-nowrap">
             <div class="flex flex-col">
               <span class="text-2xl font-bold text-slate-700 leading-none">{{ stats.general.issues }}</span>
               <div class="flex items-center gap-1.5 mt-1.5">
-                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Clusters</span>
+                <div class="flex items-center gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  {{ stats.general.issues === 1 ? 'Packet' : 'Packets' }}
+                </div>
                 <span class="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">-2%</span>
               </div>
             </div>
-            <div class="text-xl text-slate-200 font-light mb-1">/</div>
+            <div class="text-xl text-slate-200 font-light mb-1 hidden sm:block">/</div>
             <div class="flex flex-col">
               <span class="text-lg font-bold text-slate-600 leading-none">{{ formattedNumber(stats.general.interactions) }}</span>
               <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">

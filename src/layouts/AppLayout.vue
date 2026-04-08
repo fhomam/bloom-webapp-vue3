@@ -104,6 +104,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import { useBloomStore } from '@/stores/bloom'
+import { useAppStore } from '@/stores/app'
 import Dropdown from '@/components/common/Dropdown.vue'
 import * as api from '@/services/api' 
 
@@ -118,6 +119,7 @@ import InteractionExplorer from '@/components/bloom/InteractionExplorer.vue' // 
 
 const ui = useUiStore()
 const bloomStore = useBloomStore()
+const appStore = useAppStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -206,6 +208,10 @@ const activeOffering = computed({
     if (targetType) newParams.periodType = targetType
     if (targetId) newParams.periodId = targetId
 
+    if (!newParams.orgXid) {
+      newParams.orgXid = authStore.orgXid 
+    }
+
     // 5. Execute routing
     router.push({
       name: targetRouteName,
@@ -217,16 +223,48 @@ const activeOffering = computed({
 
 const dashboardLink = computed(() => {
   const xid = route.params.offeringXid
-  const history = xid ? lastVisitedMap.value[xid]?.dashboard : null
+  
+  // 1. If there's no offering selected at all, the link should be dead
+  if (!xid) return ''
+
+  const history = lastVisitedMap.value[xid]?.dashboard
+
+  // 2. Base our defaults on the URL first
+  let oType = route.params.offeringType
+  let pType = route.params.periodType
+  let pId = route.params.periodId
+
+  // 3. If we have no history, calculate the REAL latest data for this specific offering
+  if (!history) {
+    const offeringData = fullBloomsData.value[xid]
+    if (offeringData) {
+      oType = offeringData.details?.offeringType || oType
+      const blooms = offeringData.blooms || []
+      if (blooms.length > 0) {
+        const latest = [...blooms].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+        pType = latest.bloomType || pType
+        pId = latest.bloomKey || pId
+      }
+    }
+  }
+
+  // 4. Resolve the final parameters (URL -> History -> Latest Computed -> App Store)
+  const finalOrg = route.params.orgXid || appStore.orgXid
+  const finalOType = oType
+  const finalPType = history ? history.pType : pType
+  const finalPId = history ? history.pId : pId
+
+  // 5. Strict Guard: If we are missing any piece of the puzzle, don't generate a broken route
+  if (!finalOrg || !finalOType || !finalPType || !finalPId) return ''
 
   return {
     name: 'BloomDashboard',
     params: {
-      orgXid: route.params.orgXid || 'org_1',
-      offeringType: route.params.offeringType || 'app',
+      orgXid: finalOrg,
+      offeringType: finalOType,
       offeringXid: xid,
-      periodType: history ? history.pType : (route.params.periodType || 'quarterly'),
-      periodId: history ? history.pId : (route.params.periodId || '2026q1')
+      periodType: finalPType,
+      periodId: finalPId
     },
     query: history ? history.query : {}
   }
@@ -234,14 +272,22 @@ const dashboardLink = computed(() => {
 
 const reportLink = computed(() => {
   const xid = route.params.offeringXid
-  const history = xid ? lastVisitedMap.value[xid]?.report : null
+  if (!xid) return latestReportRoute.value // Fallback to the global latest we found onMount
 
-  if (history && xid) {
+  const history = lastVisitedMap.value[xid]?.report
+
+  // If we have history for this specific app, use it!
+  if (history) {
+    const finalOrg = route.params.orgXid || appStore.orgXid
+    const finalOType = route.params.offeringType
+    
+    if (!finalOrg || !finalOType || !history.pType || !history.pId) return ''
+
     return {
-      name: 'BloomReport', // Make sure this matches your router config name!
+      name: 'BloomReport', 
       params: {
-        orgXid: route.params.orgXid || 'org_1',
-        offeringType: route.params.offeringType || 'app',
+        orgXid: finalOrg,
+        offeringType: finalOType,
         offeringXid: xid,
         periodType: history.pType,
         periodId: history.pId
@@ -249,16 +295,15 @@ const reportLink = computed(() => {
       query: history.query || {}
     }
   }
-  return latestReportRoute.value // Fallback to your onMounted logic
-})
-
-const isSidebarEffectivelyOpen = computed(() => {
-  return ui.isRightOpen && route.name !== 'BloomDashboard'
+  
+  // If no history, just go to the global latest
+  return latestReportRoute.value 
 })
 
 onMounted(async () => {
   try {
     // 1. Tell the store to go fetch the data
+    await appStore.fetchSession()
     await bloomStore.loadAvailableBlooms()
     
     // 2. Read the newly populated data directly from the store state!
@@ -294,11 +339,11 @@ onMounted(async () => {
       }
 
       if (latestReport && latestDetails) {
-        const org = route.params.orgXid || 'org_1'
+        const org = route.params.orgXid || appStore.orgXid
         const type = latestDetails.offeringType || 'app'
         const xid = latestDetails.offeringXid
-        const pType = latestReport.bloomType || 'quarterly'
-        const pId = latestReport.bloomKey || '2026q1'
+        const pType = latestReport.bloomType
+        const pId = latestReport.bloomKey
         
         latestReportRoute.value = `/${org}/reports/${type}/${xid}/${pType}/${pId}`
       }

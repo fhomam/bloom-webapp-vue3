@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import BloomDashboardView from '@/views/BloomDashboardView.vue'
 import BloomReportView from '@/views/BloomReportView.vue'
+import HomeView from '@/views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,7 +14,7 @@ const router = createRouter({
         {
           path: '',
           name: 'home',
-          component: BloomDashboardView
+          component: HomeView
         },
         {
           path: '/:orgXid/dashboard/:offeringType/:offeringXid/:periodType/:periodId',

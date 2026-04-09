@@ -209,7 +209,7 @@ const activeOffering = computed({
     if (targetId) newParams.periodId = targetId
 
     if (!newParams.orgXid) {
-      newParams.orgXid = authStore.orgXid 
+      newParams.orgXid = appStore.orgXid 
     }
 
     // 5. Execute routing

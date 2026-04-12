@@ -28,12 +28,34 @@
       </div>
 
       <div class="flex flex-col">
-        <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 border-b border-slate-100 pb-2">By Country</h4>
-        <div class="h-[200px] w-full relative mb-2">
-          <v-chart class="absolute inset-0 w-full h-full" :option="getPieOption(countryStats, 'Country')" autoresize />
+        <div class="flex items-center justify-between border-b border-slate-100 pb-1.5 mb-2">
+          <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">By Locale</h4>
+          <div class="flex bg-slate-100 p-0.5 rounded-md">
+            <button 
+              @click="activeLocaleTab = 'country'" 
+              :class="['text-[10px] px-2 py-0.5 rounded font-bold transition-all', activeLocaleTab === 'country' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600']"
+            >
+              iOS Country
+            </button>
+            <button 
+              @click="activeLocaleTab = 'language'" 
+              :class="['text-[10px] px-2 py-0.5 rounded font-bold transition-all', activeLocaleTab === 'language' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600']"
+            >
+              Android Lang
+            </button>
+          </div>
         </div>
-        <div class="flex flex-col gap-1.5">
-          <div v-for="(item, index) in countryStats" :key="item.name" class="flex items-center text-sm group">
+        
+        <div class="h-[200px] w-full relative mb-2">
+          <v-chart class="absolute inset-0 w-full h-full" :option="getPieOption(currentLocaleStats, activeLocaleTab === 'country' ? 'Country' : 'Language')" autoresize />
+        </div>
+        
+        <div v-if="currentLocaleStats.length === 0" class="flex items-center justify-center h-full text-xs font-medium text-slate-400 py-4">
+          No data available
+        </div>
+
+        <div v-else class="flex flex-col gap-1.5">
+          <div v-for="(item, index) in currentLocaleStats" :key="item.name" class="flex items-center text-sm group">
             <div class="flex items-center gap-2 truncate">
               <div class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: colorPalette[index % colorPalette.length] }"></div>
               <span class="font-medium text-slate-600 truncate group-hover:text-slate-900 transition-colors" :title="item.name">{{ item.name }}</span>
@@ -66,7 +88,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useBloomStore } from '@/stores/bloom'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -77,6 +99,9 @@ import VChart from 'vue-echarts'
 use([CanvasRenderer, PieChart, TooltipComponent])
 
 const bloomStore = useBloomStore()
+
+// State for the middle column toggle
+const activeLocaleTab = ref('country')
 
 // A clean, vibrant palette for the donut slices
 const colorPalette = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#0ea5e9']
@@ -91,13 +116,13 @@ const formatSource = (src) => {
   return src
 }
 
-const formatCountry = (code) => {
+const formatLocale = (code) => {
   if (!code || code === 'default') return 'Unknown'
   return code.toUpperCase()
 }
 
 // --- UNIVERSAL BUCKETING ENGINE ---
-const getDistributionData = (dimensionKey, nameFormatter, limit = 5) => {
+const getDistributionData = (dimensionKey, nameFormatter, filterFn = null, limit = 5) => {
   const issues = bloomStore.allIssues || []
   const buckets = {}
 
@@ -107,8 +132,14 @@ const getDistributionData = (dimensionKey, nameFormatter, limit = 5) => {
     const isActionable = issue.class === 'backlog-candidate' || (!issue.class && !issue.taxo?.includes('non_issue'))
 
     issue.interactions.forEach(interaction => {
+      // If a filter is provided, skip interactions that don't match
+      if (filterFn && !filterFn(interaction)) return
+
       const rawValue = interaction[dimensionKey]
       const key = rawValue || 'unknown'
+
+      // Skip the 'global' bucket entirely so it doesn't pollute the view
+      if (key === 'global') return
 
       if (!buckets[key]) {
         buckets[key] = { volume: 0, actionableSet: new Set(), generalSet: new Set() }
@@ -140,8 +171,28 @@ const getDistributionData = (dimensionKey, nameFormatter, limit = 5) => {
 
 // --- REACTIVE BINDINGS ---
 const sourceStats = computed(() => getDistributionData('sourceId', formatSource))
-const countryStats = computed(() => getDistributionData('country', formatCountry))
+const appleCountryStats = computed(() => getDistributionData('country', formatLocale, (i) => i.sourceId === 'apple_app_store' || i.source_id === 'apple_app_store'))
+const googleLangStats = computed(() => getDistributionData('lang', formatLocale, (i) => i.sourceId === 'google_play' || i.source_id === 'google_play'))
 const versionStats = computed(() => getDistributionData('entityVersion', (v) => v === 'unknown' ? 'Unknown Version' : v))
+
+// Power the middle column based on the toggle
+const currentLocaleStats = computed(() => activeLocaleTab.value === 'country' ? appleCountryStats.value : googleLangStats.value)
+
+// --- AUTO-SWITCH LOGIC ---
+watch(
+  () => [appleCountryStats.value, googleLangStats.value],
+  ([appleData, googleData]) => {
+    const hasApple = appleData.length > 0
+    const hasGoogle = googleData.length > 0
+
+    if (activeLocaleTab.value === 'country' && !hasApple && hasGoogle) {
+      activeLocaleTab.value = 'language'
+    } else if (activeLocaleTab.value === 'language' && !hasGoogle && hasApple) {
+      activeLocaleTab.value = 'country'
+    }
+  },
+  { immediate: true }
+)
 
 // --- ECHARTS DONUT CONFIGURATION ---
 const getPieOption = (dataList, seriesName) => {
@@ -152,11 +203,9 @@ const getPieOption = (dataList, seriesName) => {
       position: function (point, params, dom, rect, size) {
         let x = point[0] + 15;
         let y = point[1] + 15;
-        // If it bleeds off the right edge, flip it to the left side of the cursor
         if (x + size.contentSize[0] > size.viewSize[0]) {
           x = point[0] - size.contentSize[0] - 15;
         }
-        // If it bleeds off the left edge (or on super small screens), pin it to the left
         if (x < 10) x = 10;
         return [x, y];
       },
@@ -198,14 +247,12 @@ const getPieOption = (dataList, seriesName) => {
           borderColor: '#fff',
           borderWidth: 2
         },
-        // Turn off default global labels, we handle it individually in the data mapping
         label: { show: false }, 
         data: dataList.map((item, index) => ({
           name: item.name,
           value: item.volume,
           actionable: item.actionable,
           general: item.general,
-          // Only show the visual guide line and text for the #1 item
           label: {
             show: index === 0,
             formatter: '{b}',

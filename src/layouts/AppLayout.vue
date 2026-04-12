@@ -300,6 +300,10 @@ const reportLink = computed(() => {
   return latestReportRoute.value 
 })
 
+const isSidebarEffectivelyOpen = computed(() => {
+  return ui.isRightOpen && route.name !== 'BloomDashboard'
+})
+
 onMounted(async () => {
   try {
     // 1. Tell the store to go fetch the data

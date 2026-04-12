@@ -6,8 +6,13 @@
       <div class="flex flex-wrap items-center gap-2 sm:gap-4">
         <span class="hidden sm:inline text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Channel Scope</span>
         <div class="hidden sm:block w-px h-3 bg-slate-300"></div>
+        
         <Dropdown v-model="activeSource" :options="sourceOptions" variant="minimal" prefix="Source:" />
-        <div class="w-px h-3 bg-slate-300 sm:hidden"></div> <Dropdown v-model="activeCountry" :options="countryOptions" variant="minimal" prefix="Country:" />
+        
+        <template v-if="activeSource !== 'all'">
+          <div class="w-px h-3 bg-slate-300"></div> 
+          <Dropdown v-model="activeSecondary" :options="secondaryOptions" variant="minimal" :prefix="secondaryPrefix" />
+        </template>
       </div>
 
       <div class="flex items-center gap-3">
@@ -21,31 +26,12 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <DashboardCommandRibbon class="col-span-1 lg:col-span-3" />
-      
-      <div class="col-span-1 lg:col-span-2">
-        <ExecutiveSummaryStats />
-      </div>
-
-      <div class="col-span-1 lg:col-span-1">
-        <TopTaxonomyWidget />
-      </div>      
-
-      <div class="col-span-1 lg:col-span-3">
-        <PrimaryTrendChart />
-      </div>
-
-      <div class="col-span-1 lg:col-span-3">
-        <TopIssuesHighlights />
-      </div>
-
-      <div class="col-span-1 lg:col-span-3">
-        <JoySparklinesList />
-      </div>
-
-      <div class="col-span-1 lg:col-span-3">
-        <SourceBreakdownRow />
-      </div>
-
+      <div class="col-span-1 lg:col-span-2"><ExecutiveSummaryStats /></div>
+      <div class="col-span-1 lg:col-span-1"><TopTaxonomyWidget /></div>      
+      <div class="col-span-1 lg:col-span-3"><PrimaryTrendChart /></div>
+      <div class="col-span-1 lg:col-span-3"><TopIssuesHighlights /></div>
+      <div class="col-span-1 lg:col-span-3"><JoySparklinesList /></div>
+      <div class="col-span-1 lg:col-span-3"><SourceBreakdownRow /></div>
     </div>
   </div>
 </template>
@@ -88,18 +74,39 @@ const updateQueryFilter = (queryKey, newValue) => {
   router.push({ query: newQuery })
 }
 
-// URL-bound reactive properties
+// 1. Primary Source Filter
 const activeSource = computed({
   get: () => route.query.srcId || 'all',
-  set: (val) => updateQueryFilter('srcId', val)
+  set: (val) => {
+    const newQuery = { ...route.query }
+    if (val === 'all') delete newQuery.srcId
+    else newQuery.srcId = val
+    
+    // 🔥 SAFEGUARD: Clear contextual filters when swapping sources
+    delete newQuery.country
+    delete newQuery.lang
+    
+    router.push({ query: newQuery })
+  }
 })
 
-const activeCountry = computed({
-  get: () => route.query.country || 'all',
-  set: (val) => updateQueryFilter('country', val)
+// 2. Contextual Secondary Filter (Handles both Country and Lang)
+const activeSecondary = computed({
+  get: () => {
+    if (activeSource.value === 'apple_app_store') return route.query.country || 'all'
+    if (activeSource.value === 'google_play') return route.query.lang || 'all'
+    return 'all'
+  },
+  set: (val) => {
+    if (activeSource.value === 'apple_app_store') updateQueryFilter('country', val)
+    if (activeSource.value === 'google_play') updateQueryFilter('lang', val)
+  }
 })
 
-// Dynamic options mapped from the store
+// Dynamic Label based on active source
+const secondaryPrefix = computed(() => activeSource.value === 'google_play' ? 'Language:' : 'Country:')
+
+// --- DYNAMIC OPTIONS GENERATION ---
 const sourceOptions = computed(() => {
   const opts = [{ id: 'all', label: 'All' }]
   if (bloomStore.countryReviewStats) {
@@ -110,23 +117,39 @@ const sourceOptions = computed(() => {
   return opts
 })
 
-const countryOptions = computed(() => {
+const secondaryOptions = computed(() => {
   const opts = [{ id: 'all', label: 'All' }]
-  if (bloomStore.countryReviewStats) {
-    const unique = new Set()
-    Object.values(bloomStore.countryReviewStats).forEach(sourceMap => {
-      Object.keys(sourceMap).forEach(country => unique.add(country))
+  
+  if (activeSource.value === 'apple_app_store') {
+    // Populate with Apple Countries
+    if (bloomStore.countryReviewStats && bloomStore.countryReviewStats['apple_app_store']) {
+      Object.keys(bloomStore.countryReviewStats['apple_app_store']).sort().forEach(code => {
+        if (code !== 'global' && code !== 'default') opts.push({ id: code, label: code.toUpperCase() })
+      })
+    }
+  } else if (activeSource.value === 'google_play') {
+    // Populate with Google Languages (scraped directly from loaded issues)
+    const issues = bloomStore.allIssues || []
+    const langs = new Set()
+    issues.forEach(issue => {
+      if (issue.interactions) {
+        issue.interactions.forEach(interaction => {
+           if ((interaction.sourceId === 'google_play' || interaction.source_id === 'google_play') && interaction.lang && interaction.lang !== 'default') {
+             langs.add(interaction.lang)
+           }
+        })
+      }
     })
-    Array.from(unique).sort().forEach(code => {
-      opts.push({ id: code, label: code.toUpperCase() })
+    Array.from(langs).sort().forEach(lang => {
+      opts.push({ id: lang, label: lang.toUpperCase() })
     })
   }
+  
   return opts
 })
 
 // --- DATA LOADING & REDIRECT LOGIC ---
 const loadDashboardData = async () => {
-  // If we have strict params, load the data!
   if (route.params.offeringXid && route.params.periodId) {
     await bloomStore.loadDashboardData({ 
       orgId: route.params.orgXid, 
@@ -136,13 +159,14 @@ const loadDashboardData = async () => {
       bloomKey: route.params.periodId,
       filters: {
         srcId: route.query.srcId,
-        country: route.query.country
+        country: route.query.country,
+        lang: route.query.lang // Include language in backend fetch
       }
     })
     return
   }
 
-  // If we don't have params, auto-route to the newest available data
+  // ... (Your auto-routing logic remains exactly the same) ...
   try {
     const bloomsObj = await bloomStore.getAvailableBlooms();
     
@@ -163,12 +187,11 @@ const loadDashboardData = async () => {
         }
       }
 
-      // STRICT CHECK: Only route if we successfully found a real period ID
       if (latestReport && latestReport.bloomKey && latestDetails) {
         router.replace({
           name: 'BloomDashboard', 
           params: {
-            orgXid: route.params.orgXid, // Trust the router parent to supply this
+            orgXid: route.params.orgXid,
             offeringType: latestDetails.offeringType,
             offeringXid: latestDetails.offeringXid,
             periodType: latestReport.bloomType,
@@ -183,7 +206,8 @@ const loadDashboardData = async () => {
 }
 
 watch(
-  () => [route.params.offeringXid, route.params.periodId, route.query.srcId, route.query.country], 
+  // Added lang to the dependency array so it hot-reloads when language changes
+  () => [route.params.offeringXid, route.params.periodId, route.query.srcId, route.query.country, route.query.lang], 
   () => {
     if (route.params.offeringXid) {
       loadDashboardData()

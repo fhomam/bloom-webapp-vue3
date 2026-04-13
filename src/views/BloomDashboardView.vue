@@ -109,8 +109,8 @@ const secondaryPrefix = computed(() => activeSource.value === 'google_play' ? 'L
 // --- DYNAMIC OPTIONS GENERATION ---
 const sourceOptions = computed(() => {
   const opts = [{ id: 'all', label: 'All' }]
-  if (bloomStore.countryReviewStats) {
-    Object.keys(bloomStore.countryReviewStats).forEach(src => {
+  if (bloomStore.sourceInteractionStats) {
+    Object.keys(bloomStore.sourceInteractionStats).forEach(src => {
       opts.push({ id: src, label: formatSource(src) })
     })
   }
@@ -120,30 +120,22 @@ const sourceOptions = computed(() => {
 const secondaryOptions = computed(() => {
   const opts = [{ id: 'all', label: 'All' }]
   
+  const sourceStats = bloomStore.sourceInteractionStats?.[activeSource.value]
+  if (!sourceStats) return opts
+
+  let targetDimensionStats = {}
   if (activeSource.value === 'apple_app_store') {
-    // Populate with Apple Countries
-    if (bloomStore.countryReviewStats && bloomStore.countryReviewStats['apple_app_store']) {
-      Object.keys(bloomStore.countryReviewStats['apple_app_store']).sort().forEach(code => {
-        if (code !== 'global' && code !== 'default') opts.push({ id: code, label: code.toUpperCase() })
-      })
-    }
+    targetDimensionStats = sourceStats.country || {}
   } else if (activeSource.value === 'google_play') {
-    // Populate with Google Languages (scraped directly from loaded issues)
-    const issues = bloomStore.allIssues || []
-    const langs = new Set()
-    issues.forEach(issue => {
-      if (issue.interactions) {
-        issue.interactions.forEach(interaction => {
-           if ((interaction.sourceId === 'google_play' || interaction.source_id === 'google_play') && interaction.lang && interaction.lang !== 'default') {
-             langs.add(interaction.lang)
-           }
-        })
-      }
-    })
-    Array.from(langs).sort().forEach(lang => {
-      opts.push({ id: lang, label: lang.toUpperCase() })
-    })
+    targetDimensionStats = sourceStats.lang || {}
   }
+
+  // Generate options from the mapped dictionary
+  Object.keys(targetDimensionStats).sort().forEach(code => {
+    if (code !== 'global' && code !== 'default') {
+      opts.push({ id: code, label: code.toUpperCase() })
+    }
+  })
   
   return opts
 })

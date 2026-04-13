@@ -46,14 +46,12 @@
 
     <div class="hidden sm:flex md:hidden flex-col gap-5 px-6 py-5">
       <div class="flex items-start justify-between gap-4">
-        
         <div class="flex flex-col items-start text-left min-w-0">
           <h1 class="text-[22px] font-bold text-slate-900 tracking-tight leading-none truncate w-full">{{ appName }}</h1>
           <div class="mt-1.5">
             <Dropdown v-model="activeClass" :options="classOptions" variant="minimal" />
           </div>
         </div>
-
         <div class="flex items-start justify-end shrink-0">
           <div class="flex flex-col items-end text-right">
             <div class="flex items-center gap-2">
@@ -67,19 +65,16 @@
             </div>
           </div>
         </div>
-
       </div>
     </div>
 
     <div class="flex sm:hidden flex-col px-6 py-5 bg-white">
-      
       <div class="flex flex-col items-center text-center min-w-0">
         <h1 class="font-bold text-slate-900 text-[19px] leading-tight truncate w-full">{{ appName }}</h1>
         <div class="mt-1">
           <Dropdown v-model="activeClass" :options="classOptions" variant="minimal" class="text-[14.5px]" />
         </div>
       </div>
-
       <div class="flex items-center justify-between mt-4 pt-3.5 border-t border-slate-100">
         <div class="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
           <div class="flex items-center gap-1">
@@ -89,13 +84,11 @@
           </div>
           <span class="text-[11.5px] text-slate-400 truncate">Based on {{ safeReviewsAnalyzed }} interactions</span>
         </div>
-
         <div class="flex items-center gap-1.5 shrink-0 self-start mt-1">
           <span class="text-[22px]">🎉</span>
           <span class="text-[20px] font-black text-slate-900 tracking-tighter">{{ safeJoyScore }}</span>
         </div>
       </div>
-
     </div>
 
     <div class="px-6 lg:px-10 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/30 gap-4">
@@ -123,7 +116,8 @@
       
       <div class="flex items-center justify-end w-full sm:w-auto sm:ml-auto gap-3">
         <Dropdown v-model="activeSource" :options="sourceOptions" variant="boxed" />
-        <Dropdown v-model="activeCountry" :options="countryOptions" variant="boxed" />
+        
+        <Dropdown v-if="activeSource !== 'all'" v-model="activeSecondary" :options="secondaryOptions" variant="boxed" />
       </div>
     </div>
 
@@ -285,8 +279,37 @@ const createUrlModel = (key, defaultVal) => computed({
 })
 
 const activeClass = createUrlModel('class', 'all')
-const activeSource = createUrlModel('srcId', 'all')
-const activeCountry = createUrlModel('country', 'all')
+
+// Contextual Routing Logic
+const activeSource = computed({
+  get: () => route.query.srcId || 'all',
+  set: (val) => {
+    const query = { ...route.query }
+    if (val === 'all') delete query.srcId
+    else query.srcId = val
+    
+    // Safety check: Wipe out contextual filters when source changes
+    delete query.country
+    delete query.lang
+    router.push({ query })
+  }
+})
+
+// Secondary Locale Router
+const activeSecondary = computed({
+  get: () => {
+    if (activeSource.value === 'apple_app_store') return route.query.country || 'all'
+    if (activeSource.value === 'google_play') return route.query.lang || 'all'
+    return 'all'
+  },
+  set: (val) => {
+    const query = { ...route.query }
+    const key = activeSource.value === 'apple_app_store' ? 'country' : 'lang'
+    if (val === 'all') delete query[key]
+    else query[key] = val
+    router.push({ query })
+  }
+})
 
 // --- DYNAMIC DROPDOWN OPTIONS ---
 const classOptions = [
@@ -295,64 +318,46 @@ const classOptions = [
   { id: 'non-actionable', label: 'General Feedback' }
 ]
 
-// Mutually-aware Sources
 const sourceOptions = computed(() => {
   const baseOptions = [{ id: 'all', label: 'All Sources', subLabel: 'Platforms' }]
   const versions = bloomStore.sourcesWithVersion
-  const stats = bloomStore.countryReviewStats
-  const currentCountry = activeCountry.value 
   
   if (!versions || typeof versions !== 'object') return baseOptions
   
-  const dynamicSources = Object.keys(versions)
-    .filter(sourceKey => {
-      if (currentCountry && currentCountry !== 'all') {
-        return stats && stats[sourceKey] && stats[sourceKey][currentCountry] > 0
-      }
-      return true
-    })
-    .map(sourceKey => ({
-      id: sourceKey,
-      label: formatSourceName(sourceKey),
-      subLabel: versions[sourceKey] 
-    }))
+  const dynamicSources = Object.keys(versions).map(sourceKey => ({
+    id: sourceKey,
+    label: formatSourceName(sourceKey),
+    subLabel: versions[sourceKey] 
+  }))
   
   return [...baseOptions, ...dynamicSources]
 })
 
-// Mutually-aware Countries
-const countryOptions = computed(() => {
-  const baseOptions = [{ id: 'all', label: 'All', subLabel: 'Countries' }]
-  const stats = bloomStore.countryReviewStats
-  const currentSource = activeSource.value 
+const secondaryOptions = computed(() => {
+  const baseOptions = [{ id: 'all', label: 'All', subLabel: activeSource.value === 'google_play' ? 'Languages' : 'Countries' }]
   
-  if (!stats || typeof stats !== 'object') return baseOptions
-  
-  const aggregatedCounts = {}
-  
-  Object.entries(stats).forEach(([sourceKey, sourceData]) => {
-    if (currentSource && currentSource !== 'all' && sourceKey !== currentSource) {
-      return
-    }
+  // 1. Grab the stats for the currently selected source from our NEW store variable
+  const sourceStats = bloomStore.sourceInteractionStats?.[activeSource.value]
+  if (!sourceStats) return baseOptions
 
-    if (!sourceData || typeof sourceData !== 'object') return
-    
-    Object.entries(sourceData).forEach(([countryCode, count]) => {
-      const code = (countryCode || '').toLowerCase()
-      if (!code) return
-      aggregatedCounts[code] = (aggregatedCounts[code] || 0) + count
-    })
-  })
-  
-  const dynamicCountries = Object.entries(aggregatedCounts).map(([code, count]) => ({
-    id: code,
-    label: code.toUpperCase(),
-    subLabel: `${formatNumber(count)} reviews`
-  }))
-  
-  dynamicCountries.sort((a, b) => a.label.localeCompare(b.label))
-  
-  return [...baseOptions, ...dynamicCountries]
+  // 2. Select the correct dimension dictionary based on the source
+  let targetDimensionStats = {}
+  if (activeSource.value === 'apple_app_store') {
+    targetDimensionStats = sourceStats.country || {}
+  } else if (activeSource.value === 'google_play') {
+    targetDimensionStats = sourceStats.lang || {}
+  }
+
+  // 3. Map the dictionary into dropdown options, filtering out placeholders
+  const dynamicOptions = Object.entries(targetDimensionStats)
+    .filter(([code]) => code !== 'global' && code !== 'default')
+    .map(([code, count]) => ({
+      id: code,
+      label: code.toUpperCase(),
+      subLabel: `${formatNumber(count)} reviews`
+    }))
+
+  return [...baseOptions, ...dynamicOptions.sort((a, b) => a.label.localeCompare(b.label))]
 })
 
 onMounted(() => {

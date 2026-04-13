@@ -56,7 +56,7 @@ export const useBloomStore = defineStore('bloom', () => {
   const currentBloom = ref(null)
   const offeringContext = ref(null)
   const themes = ref([])
-  const countryReviewStats = ref(null)
+  const sourceInteractionStats = ref(null)
   const sourcesWithVersion = ref(null)
   const isLoading = ref(false)
   const error = ref(null)
@@ -159,22 +159,23 @@ export const useBloomStore = defineStore('bloom', () => {
       const bloomApiPayload = {
         ...corePayload,
         country: filters.country && filters.country !== 'all' ? filters.country : undefined,
+        lang: filters.lang && filters.lang !== 'all' ? filters.lang : undefined, // 🔥 NEW: Pass lang filter
         srcId: filters.srcId && filters.srcId !== 'all' ? filters.srcId : undefined
       }
 
-      // 4. Fetch simultaneously! (Notice api.getBloom uses the filtered payload)
-      const [bloomRes, contextRes, themesRes, countryRes, sourceRes] = await Promise.all([
-        api.getBloom(bloomApiPayload),               // <-- Yields scoped Joy Score & Issues!
-        api.getAppOffering(corePayload),             // Keep core
-        api.getAllThemes(corePayload),               // Keep core
-        api.getBloomCountryReviewStats(corePayload), // Keep core so dropdowns don't shrink
-        api.getBloomSourcesWithVersion(corePayload)  // Keep core
+      // 4. Fetch simultaneously! 
+      const [bloomRes, contextRes, themesRes, statsRes, sourceRes] = await Promise.all([
+        api.getBloom(bloomApiPayload),               
+        api.getAppOffering(corePayload),             
+        api.getAllThemes(corePayload),               
+        api.getBloomSourceInteractionStats(corePayload), // 🔥 NEW: Updated API method
+        api.getBloomSourcesWithVersion(corePayload)  
       ])
       
       currentBloom.value = bloomRes
       offeringContext.value = contextRes
       themes.value = themesRes
-      countryReviewStats.value = countryRes
+      sourceInteractionStats.value = statsRes // 🔥 NEW: Renamed state variable
       sourcesWithVersion.value = sourceRes
     } catch (err) {
       console.error(err)
@@ -192,7 +193,6 @@ export const useBloomStore = defineStore('bloom', () => {
       const { filters = {}, ...basePayload } = payload
 
       // 2. Create the core params payload for auxiliary API calls.
-      // We explicitly DO NOT pass filters here so dropdown data remains fully populated.
       const corePayload = {
         orgId: basePayload.orgId,
         bloomKey: basePayload.bloomKey,
@@ -204,29 +204,27 @@ export const useBloomStore = defineStore('bloom', () => {
       // 3. Construct the specific payload for the main Bloom report, injecting active filters
       const bloomApiPayload = {
         ...corePayload,
-        // Only append filters if they are actively selected and not 'all'
         country: filters.country && filters.country !== 'all' ? filters.country : undefined,
+        lang: filters.lang && filters.lang !== 'all' ? filters.lang : undefined, // 🔥 NEW: Pass lang filter
         srcId: filters.srcId && filters.srcId !== 'all' ? filters.srcId : undefined,
         theme: filters.theme && filters.theme !== 'all' ? filters.theme : undefined,
-        
-        // FIX: Map the frontend 'class' filter to the backend 'issueClass' parameter
         issueClass: filters.class && filters.class !== 'all' ? filters.class : undefined
       }
 
       // 4. Execute all 5 calls simultaneously 
-      const [bloomRes, contextRes, themesRes, countryRes, sourceRes] = await Promise.all([
-        api.getBloom(bloomApiPayload),               // Fetches the filtered issues
-        api.getAppOffering(corePayload),             // Uses core payload
-        api.getAllThemes(corePayload),               // Uses core payload
-        api.getBloomCountryReviewStats(corePayload), // Uses core payload
-        api.getBloomSourcesWithVersion(corePayload)  // Uses core payload
+      const [bloomRes, contextRes, themesRes, statsRes, sourceRes] = await Promise.all([
+        api.getBloom(bloomApiPayload),               
+        api.getAppOffering(corePayload),             
+        api.getAllThemes(corePayload),               
+        api.getBloomSourceInteractionStats(corePayload), // 🔥 NEW: Updated API method
+        api.getBloomSourcesWithVersion(corePayload)  
       ])
       
       currentBloom.value = bloomRes
       offeringContext.value = contextRes
       themes.value = themesRes
-      countryReviewStats.value = countryRes      // <-- Saved to state
-      sourcesWithVersion.value = sourceRes       // <-- Saved to state
+      sourceInteractionStats.value = statsRes      // <-- Saved to updated state variable
+      sourcesWithVersion.value = sourceRes       
     } catch (err) {
       console.error(err)
       error.value = "Failed to load Bloom data."
@@ -246,7 +244,7 @@ export const useBloomStore = defineStore('bloom', () => {
   }
 
   return { 
-    currentBloom, offeringContext, themes, countryReviewStats, 
+    currentBloom, offeringContext, themes, sourceInteractionStats, 
     sourcesWithVersion, isLoading, error, allIssues, joyStats, 
     taxoStats, getFilteredAndSortedIssues,loadReportData, 
     loadDashboardData, availableBloomsDirectory,loadAvailableBlooms

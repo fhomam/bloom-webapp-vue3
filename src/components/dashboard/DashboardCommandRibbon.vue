@@ -119,16 +119,26 @@ const uiState = reactive({
 const isAppOffering = computed(() => route.params.offeringType === 'app' || !route.params.offeringType)
 
 const availableSources = computed(() => {
-  if (!bloomStore.countryReviewStats) return []
-  return Object.keys(bloomStore.countryReviewStats)
+  if (!bloomStore.sourceInteractionStats) return []
+  return Object.keys(bloomStore.sourceInteractionStats)
 })
 
 const availableCountries = computed(() => {
-  if (!bloomStore.countryReviewStats) return []
+  if (!bloomStore.sourceInteractionStats) return []
+  
   const unique = new Set()
-  Object.values(bloomStore.countryReviewStats).forEach(sourceMap => {
-    Object.keys(sourceMap).forEach(country => unique.add(country))
+  
+  // Iterate through each source, and grab keys from their "country" dictionary
+  Object.values(bloomStore.sourceInteractionStats).forEach(sourceData => {
+    if (sourceData.country) {
+      Object.keys(sourceData.country).forEach(countryCode => {
+        if (countryCode !== 'global' && countryCode !== 'default') {
+          unique.add(countryCode)
+        }
+      })
+    }
   })
+  
   return Array.from(unique).sort()
 })
 

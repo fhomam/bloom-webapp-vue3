@@ -20,8 +20,8 @@ export async function getBloomSnippets(payload) {
    return response.data.value || response.data;
 }
 
-export async function getBloomCountryReviewStats(payload) {
-   const response = await appClient.post(`/api/v1/get/bloom/country/review/stats`, payload);
+export async function getBloomSourceInteractionStats(payload) {
+   const response = await appClient.post(`/api/v1/get/bloom/source/interaction/stats`, payload);
    return response.data.value || response.data;
 }
 

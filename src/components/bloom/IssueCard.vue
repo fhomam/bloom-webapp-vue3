@@ -53,10 +53,31 @@
           <span class="font-bold text-slate-900 group-hover/btn:text-bloom-primary transition-colors">{{ formatNumber(issue.interactions?.length || 0) }}</span>
         </button>
 
-        <div class="flex items-center md:justify-between gap-2 md:gap-0">
-          <span>Countries<span class="md:hidden">:</span></span>
+        <div v-if="activeSource === 'apple_app_store' && appleCountries.length > 0" class="flex items-center md:justify-between gap-2 md:gap-0">
+          <span class="flex items-center gap-1.5">
+            Countries 
+            <svg class="w-3.5 h-3.5 text-slate-400 cursor-help outline-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <title>Country data is tracked specifically for Apple App Store interactions.</title>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="md:hidden">:</span>
+          </span>
           <span class="font-bold text-slate-900 text-right cursor-help" :title="fullCountryTooltip">
             {{ topCountriesLabel }}
+          </span>
+        </div>
+        
+        <div v-if="activeSource === 'google_play' && googleLangs.length > 0" class="flex items-center md:justify-between gap-2 md:gap-0">
+          <span class="flex items-center gap-1.5">
+            Languages 
+            <svg class="w-3.5 h-3.5 text-slate-400 cursor-help outline-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <title>Language data is tracked specifically for Google Play interactions.</title>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="md:hidden">:</span>
+          </span>
+          <span class="font-bold text-slate-900 text-right cursor-help" :title="fullLangTooltip">
+            {{ topLangsLabel }}
           </span>
         </div>
         
@@ -121,6 +142,9 @@ const props = defineProps({
 const router = useRouter()
 const route = useRoute()
 
+// Determine the active source from the URL
+const activeSource = computed(() => route.query.srcId || 'all')
+
 const formatNumber = (num) => {
   if (num === undefined || num === null) return '0'
   return Number(num).toLocaleString('en-US')
@@ -153,31 +177,51 @@ const issueStats = computed(() => {
   }
 })
 
-// --- COUNTRY SORTING & DISPLAY ---
-const sortedCountryData = computed(() => {
-  if (!props.issue.interactions || props.issue.interactions.length === 0) return []
+// --- CONTEXTUAL LOCATION LOGIC ---
+const generateLabel = (dataArray) => {
+  if (dataArray.length === 0) return 'N/A'
+  const topTwo = dataArray.slice(0, 2).map(c => c[0]).join(', ')
+  const remaining = dataArray.length - 2
+  if (remaining > 0) return `${topTwo}, +${remaining}`
+  return topTwo
+}
+
+const generateTooltip = (dataArray) => {
+  return dataArray.map(([key, count]) => `${key}: ${formatNumber(count)}`).join(' | ')
+}
+
+// 1. Calculate Apple Countries
+const appleCountries = computed(() => {
+  if (!props.issue.interactions) return []
   const counts = {}
-  props.issue.interactions.forEach(interaction => {
-    const country = (interaction.country || '??').toUpperCase()
-    counts[country] = (counts[country] || 0) + 1
+  props.issue.interactions.forEach(int => {
+    if ((int.sourceId === 'apple_app_store' || int.source_id === 'apple_app_store') && int.country && int.country !== 'global' && int.country !== 'default') {
+      const code = int.country.toUpperCase()
+      counts[code] = (counts[code] || 0) + 1
+    }
   })
   return Object.entries(counts).sort((a, b) => b[1] - a[1])
 })
 
-const topCountriesLabel = computed(() => {
-  const data = sortedCountryData.value
-  if (data.length === 0) return 'N/A'
-  const topTwo = data.slice(0, 2).map(c => c[0]).join(', ')
-  const remaining = data.length - 2
-  if (remaining > 0) return `${topTwo}, +${remaining}`
-  return topTwo
+// 2. Calculate Google Languages
+const googleLangs = computed(() => {
+  if (!props.issue.interactions) return []
+  const counts = {}
+  props.issue.interactions.forEach(int => {
+    if ((int.sourceId === 'google_play' || int.source_id === 'google_play') && int.lang && int.lang !== 'global' && int.lang !== 'default') {
+      const code = int.lang.toUpperCase()
+      counts[code] = (counts[code] || 0) + 1
+    }
+  })
+  return Object.entries(counts).sort((a, b) => b[1] - a[1])
 })
 
-const fullCountryTooltip = computed(() => {
-  const data = sortedCountryData.value
-  if (data.length === 0) return ''
-  return data.map(([country, count]) => `${country}: ${formatNumber(count)}`).join(' | ')
-})
+// 3. Bind UI Labels
+const topCountriesLabel = computed(() => generateLabel(appleCountries.value))
+const fullCountryTooltip = computed(() => generateTooltip(appleCountries.value))
+
+const topLangsLabel = computed(() => generateLabel(googleLangs.value))
+const fullLangTooltip = computed(() => generateTooltip(googleLangs.value))
 
 
 // --- OTHER LABELS & LOGIC ---
@@ -211,12 +255,9 @@ const exactDate = computed(() => {
 })
 
 // --- TAXO EXPLORATION ACTIONS ---
-
-// Wire up the Sidebar Trigger with cleanup
 const openExplorer = () => {
   if (!props.issue.taxo) return
   const safeTaxo = props.issue.taxo.replaceAll(':', '-')
-  
   ui.navigateWithGrace('interactions', { exploreIssue: safeTaxo }, route, router)
 }
 
@@ -248,13 +289,10 @@ const toggleTaxo = (taxo) => {
   const safeTaxo = taxo.replaceAll(':', '-')
 
   if (route.query.taxo === safeTaxo) {
-    // If turning OFF the taxo filter, just remove it from the URL
     const newQuery = { ...route.query }
     delete newQuery.taxo
     router.push({ query: newQuery })
   } else {
-    // If turning ON the taxo filter, use grace to prevent jitter, 
-    // and wipe the interaction states so Taxonomy correctly takes precedence!
     ui.navigateWithGrace('taxonomy', { 
       taxo: safeTaxo,
       exploreIssue: null, 

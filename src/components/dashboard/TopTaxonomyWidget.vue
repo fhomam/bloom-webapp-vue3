@@ -50,10 +50,6 @@
             <span v-else-if="item.type === 'topic'" class="text-[10px] text-slate-500 font-medium truncate">
               {{ item.issueCount }} {{ item.issueCount === 1 ? 'Packet' : 'Packets' }} &bull; <span class="text-slate-400">In {{ item.parentTitle }}</span>
             </span>
-              
-            <span class="text-[9px] text-slate-300 group-hover:text-slate-500 font-mono truncate transition-colors">
-              {{ item.taxo }}
-            </span>
           </div>
         </div>
 

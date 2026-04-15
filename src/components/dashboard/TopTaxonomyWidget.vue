@@ -24,10 +24,11 @@
 
     <div class="flex flex-col flex-1 overflow-y-auto hide-scrollbar -mx-2 px-2">
       
-      <div 
+      <button 
         v-for="(item, index) in currentList" 
         :key="item.id"
-        class="relative flex items-start justify-between py-2 px-2 rounded-lg group hover:bg-slate-50 transition-colors cursor-default"
+        @click="goToTaxonomy(item)"
+        class="relative flex items-start justify-between py-2 px-2 rounded-lg group hover:bg-slate-50 transition-colors cursor-pointer w-full text-left"
       >
         <div 
           class="absolute inset-y-1 left-1 bg-slate-100/60 rounded-md -z-10 transition-all duration-500"
@@ -35,12 +36,12 @@
         ></div>
 
         <div class="flex items-start gap-3 overflow-hidden pr-4 z-10 w-full mt-0.5">
-          <span class="text-[10px] font-bold text-slate-400 w-3 text-right shrink-0 mt-[2px]">
+          <span class="text-[10px] font-bold text-slate-400 w-3 text-right shrink-0 mt-[2px] group-hover:text-bloom-primary transition-colors">
             {{ index + 1 }}
           </span>
           
           <div class="flex flex-col min-w-0 flex-1 gap-0.5">
-            <span class="text-sm font-semibold text-slate-800 truncate" :title="item.title">
+            <span class="text-sm font-semibold text-slate-800 truncate group-hover:text-bloom-primary transition-colors" :title="item.title">
               {{ item.title }}
             </span>
             
@@ -50,6 +51,9 @@
             <span v-else-if="item.type === 'topic'" class="text-[10px] text-slate-500 font-medium truncate">
               {{ item.issueCount }} {{ item.issueCount === 1 ? 'Packet' : 'Packets' }} &bull; <span class="text-slate-400">In {{ item.parentTitle }}</span>
             </span>
+            <span v-else-if="item.type === 'issue'" class="text-[10px] text-slate-500 font-medium truncate">
+              {{ item.latestDateLabel }} &bull; <span class="text-slate-400">In {{ item.parentTitle }}</span>
+            </span>
           </div>
         </div>
 
@@ -57,12 +61,12 @@
           <span class="text-sm font-bold text-slate-900 leading-none">
             {{ formattedNumber(item.interactions) }}
           </span>
-          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">
-            Int.
+          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+            Interactions
           </span>
         </div>
         
-      </div>
+      </button>
 
       <div v-if="currentList.length === 0" class="text-center text-xs text-slate-400 italic py-6">
         No {{ activeTab }} available.
@@ -82,22 +86,36 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
 
 const route = useRoute()
+const router = useRouter()
 const bloomStore = useBloomStore()
 
 const activeTab = ref('categories')
 
-// Map the internal data keys to the new UI labels
 const taxonomyTabs = [
   { id: 'categories', label: 'Categories' },
   { id: 'topics', label: 'Topics' },
-  { id: 'issues', label: 'Packets' } // Keeps internal logic intact!
+  { id: 'issues', label: 'Packets' } 
 ]
 
-// --- DATA ENGINE: Aggregation & Sub-item Counting ---
+// --- UTILS ---
+const formattedNumber = (num) => {
+  if (!num) return '0'
+  return new Intl.NumberFormat('en-US', { notation: "compact", compactDisplay: "short" }).format(num)
+}
+
+const getRelativeDateLabel = (timestampMs) => {
+  if (!timestampMs) return 'No Date'
+  const days = Math.floor((Date.now() - timestampMs) / (1000 * 60 * 60 * 24))
+  if (days === 0) return 'Updated Today'
+  if (days === 1) return 'Updated 1 day ago'
+  return `Updated ${days} days ago`
+}
+
+// --- DATA ENGINE ---
 const aggregatedData = computed(() => {
   const cats = []
   const tops = []
@@ -117,7 +135,21 @@ const aggregatedData = computed(() => {
       const topicTitle = t.title || t.taxo
 
       t.issues?.forEach(i => {
-        let iIntCount = i.interactions?.length || 0
+        let iIntCount = 0
+        let latestMs = 0
+
+        // Calculate exact counts and latest date
+        if (i.interactions) {
+          iIntCount = i.interactions.length
+          i.interactions.forEach(int => {
+            const dateStr = int.updatedAtSource || int.createdAt
+            if (dateStr) {
+              const ts = new Date(dateStr).getTime()
+              if (ts > latestMs) latestMs = ts
+            }
+          })
+        }
+
         tIntCount += iIntCount
         cIntCount += iIntCount
 
@@ -127,6 +159,7 @@ const aggregatedData = computed(() => {
           taxo: i.taxo,
           interactions: iIntCount,
           parentTitle: topicTitle,
+          latestDateLabel: getRelativeDateLabel(latestMs), // 🔥 Added formatted date
           type: 'issue'
         })
       })
@@ -155,7 +188,7 @@ const aggregatedData = computed(() => {
     })
   })
 
-  // Returns arrays strictly capped at top 3
+  // Returns arrays strictly capped at top 3 (or 5, depending on height)
   return {
     categories: cats.sort((a, b) => b.interactions - a.interactions).slice(0, 3),
     topics: tops.sort((a, b) => b.interactions - a.interactions).slice(0, 3),
@@ -170,26 +203,40 @@ const maxInteractions = computed(() => {
   return currentList.value[0].interactions
 })
 
+// --- NAVIGATION ---
+
+// 🔥 Click handler for individual rows
+const goToTaxonomy = (item) => {
+  const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
+  
+  if (!orgXid || !offeringXid || !periodId) return
+
+  // Format taxo for the URL (replace colons with dashes if your router requires it)
+  const safeTaxo = item.taxo ? item.taxo.replaceAll(':', '-') : ''
+
+  // Preserve all existing query parameters (like srcId, country, theme)
+  const queryToPreserve = { ...route.query, taxo: safeTaxo }
+
+  router.push({
+    path: `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}`,
+    query: queryToPreserve
+  })
+}
+
+// "Explore All" link at bottom
 const exploreTaxonomyUrl = computed(() => {
   const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
   
-  if (!orgXid || !offeringXid || !periodId) {
-    return ''
-  }
+  if (!orgXid || !offeringXid || !periodId) return ''
   
   const topCategory = aggregatedData.value?.categories?.[0]
-  const taxoParam = topCategory ? `?taxo=${topCategory.taxo}` : ''
+  const safeTaxo = topCategory ? topCategory.taxo.replaceAll(':', '-') : ''
+  
+  // Construct a raw query string to preserve existing filters
+  const currentQuery = new URLSearchParams(route.query)
+  if (safeTaxo) currentQuery.set('taxo', safeTaxo)
 
-  return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}${taxoParam}`
+  return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}?${currentQuery.toString()}`
 })
 
-const formattedNumber = (num) => {
-  if (!num) return '0'
-  return new Intl.NumberFormat('en-US', { notation: "compact", compactDisplay: "short" }).format(num)
-}
 </script>
-
-<style scoped>
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-</style>

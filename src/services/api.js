@@ -40,3 +40,13 @@ export const getAvailableBlooms = async () => {
    return response.data.value || response.data
 }
 
+export async function getHomePulse(payload) {
+   const response = await appClient.post(`/api/v1/get/home/pulse`, payload);
+   return response.data.value || response.data;
+}
+
+export async function getHomePortfolio(payload) {
+   const response = await appClient.post(`/api/v1/get/home/portfolio`, payload);
+   return response.data.value || response.data;
+}
+

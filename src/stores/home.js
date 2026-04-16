@@ -4,12 +4,10 @@ import * as api from '@/services/api'
 
 export const useHomeStore = defineStore('home', () => {
   
-  // ==========================================
-  // STATE
-  // ==========================================
+  // --- STATE ---
   const pulseData = ref({
     totalAvailableInteractions: 0,
-    totalAnalyzedInteractions: 0, // Consider renaming to 'Processed' in the UI!
+    totalAnalyzedInteractions: 0,
     activeOfferingsCount: 0,
     syncingSourcesCount: 0,
     lastSyncTimestamp: null
@@ -19,19 +17,19 @@ export const useHomeStore = defineStore('home', () => {
   const portfolioData = ref([])
   const isPortfolioLoading = ref(false)
 
+  // 🔥 New Trending Issues State
+  const trendingIssuesData = ref([])
+  const isTrendingLoading = ref(false)
+
   const error = ref(null)
 
-  // ==========================================
-  // ACTIONS
-  // ==========================================
+  // --- ACTIONS ---
   async function loadPulseData(payload) {
     isPulseLoading.value = true
     error.value = null
     try {
       const res = await api.getHomePulse(payload)
-      if (res) {
-        pulseData.value = res
-      }
+      if (res) pulseData.value = res
     } catch (err) {
       console.error('Failed to load pulse data:', err)
       error.value = "Failed to load Organization Overview."
@@ -44,12 +42,8 @@ export const useHomeStore = defineStore('home', () => {
     isPortfolioLoading.value = true
     error.value = null
     try {
-      // Assumes you've added getHomePortfolio to services/api.js
       const res = await api.getHomePortfolio(payload)
-      console.log(res)
-      if (res) {
-        portfolioData.value = res
-      }
+      if (res) portfolioData.value = res
     } catch (err) {
       console.error('Failed to load portfolio data:', err)
       error.value = "Failed to load Portfolio Offerings."
@@ -58,16 +52,27 @@ export const useHomeStore = defineStore('home', () => {
     }
   }
 
+  // 🔥 New Trending Issues Action
+  async function loadTrendingIssues(payload) {
+    isTrendingLoading.value = true
+    error.value = null
+    try {
+      // Pass days: 7 along with orgXid
+      const res = await api.getHomeTrendingIssues({ ...payload, days: 7 })
+      if (res) trendingIssuesData.value = res
+    } catch (err) {
+      console.error('Failed to load trending issues:', err)
+      error.value = "Failed to load Trending Issues."
+    } finally {
+      isTrendingLoading.value = false
+    }
+  }
+
   return { 
-    // State
-    pulseData, 
-    isPulseLoading, 
-    portfolioData,
-    isPortfolioLoading,
+    pulseData, isPulseLoading, 
+    portfolioData, isPortfolioLoading,
+    trendingIssuesData, isTrendingLoading, // Exposed state
     error, 
-    
-    // Actions
-    loadPulseData,
-    loadPortfolioData
+    loadPulseData, loadPortfolioData, loadTrendingIssues // Exposed actions
   }
 })

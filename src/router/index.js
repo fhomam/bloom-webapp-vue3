@@ -12,7 +12,7 @@ const router = createRouter({
       component: AppLayout,
       children: [
         {
-          path: '',
+          path: '/:orgXid/home',
           name: 'home',
           component: HomeView
         },

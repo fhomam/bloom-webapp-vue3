@@ -10,10 +10,13 @@ export const useUiStore = defineStore('ui', () => {
   const rightTabs = ref([]) 
   const activeRightTab = ref('')
   
-  // Track the dynamic height of the top ribbon
   const reportRibbonHeight = ref(0)
 
-  // The "Magic" function pages will call to configure the sidebar
+  // --- NEW: Global Navigation Memory ---
+  // Remembers the last specific app views so the sidebar always works from Home
+  const lastDashboardRoute = ref(null)
+  const lastReportRoute = ref(null)
+
   function configureRightSidebar(tabs, defaultTab, autoOpen = false) {
     rightTabs.value = tabs
     activeRightTab.value = defaultTab
@@ -26,17 +29,13 @@ export const useUiStore = defineStore('ui', () => {
     isRightOpen.value = false
   }
 
-  // --- Centralized Navigation Orchestrator ---
   function navigateWithGrace(tabId, newParams, route, router) {
-    // 1. Instantly switch the UI tab
     activeRightTab.value = tabId
     isRightOpen.value = true
     
-    // 2. Grant the browser 50ms of computational grace
     setTimeout(() => {
       const newQuery = { ...route.query }
       
-      // 3. Apply new params and delete any passed as null/undefined
       Object.keys(newParams).forEach(key => {
         if (newParams[key] === null || newParams[key] === undefined) {
           delete newQuery[key]
@@ -45,7 +44,6 @@ export const useUiStore = defineStore('ui', () => {
         }
       })
 
-      // Auto-cleanup mutually exclusive interaction params
       if (newParams.exploreIssue) delete newQuery.exploreEmotion
       if (newParams.exploreEmotion) delete newQuery.exploreIssue
       
@@ -59,8 +57,10 @@ export const useUiStore = defineStore('ui', () => {
     rightTabs, 
     activeRightTab, 
     reportRibbonHeight,
+    lastDashboardRoute, // <-- Exported
+    lastReportRoute,    // <-- Exported
     configureRightSidebar, 
     closeRightSidebar,
-    navigateWithGrace // <-- Exported here so components can use it!
+    navigateWithGrace
   }
 })

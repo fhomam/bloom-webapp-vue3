@@ -141,16 +141,22 @@
         <div class="flex items-center gap-3">
           <button @click="ui.isLeftCollapsed = false" class="md:hidden text-slate-500 hover:text-slate-900 mr-2">☰</button>
           
-          <template v-if="!isGlobalView">
+          <div class="flex items-center gap-2">
+            <span v-if="isGlobalView" class="hidden sm:inline-block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+              Quick Jump:
+            </span>
+            
             <Dropdown 
+              :key="`dropdown-${route.name}`"
               v-if="availableOfferings.length > 0" 
               v-model="activeOffering" 
               :options="availableOfferings" 
               variant="minimal" 
-              class="font-semibold text-slate-800 -ml-2"
+              :class="['font-semibold text-slate-800', isGlobalView ? '' : '-ml-2']"
+              :placeholder="isGlobalView ? 'Select an offering...' : ''"
             />
             <span v-else-if="route.params.offeringXid" class="text-sm font-semibold text-slate-500 animate-pulse">Loading...</span>
-          </template>
+          </div>
         </div>
         
         <div class="flex items-center gap-4">
@@ -334,11 +340,13 @@ watch(
   }
 )
 
+// Active Offering Dropdown Model
 const activeOffering = computed({
   get: () => route.params.offeringXid || '',
   set: (newXid) => {
     if (!newXid || newXid === route.params.offeringXid) return
     
+    // 1. Initialize from current route (these will be undefined on Home view)
     let targetType = route.params.periodType
     let targetId = route.params.periodId
     let targetOfferingType = route.params.offeringType
@@ -349,24 +357,28 @@ const activeOffering = computed({
     
     const viewType = String(targetRouteName).includes('Dashboard') ? 'dashboard' : 'report'
     const history = lastVisitedMap.value[newXid]?.[viewType]
+    const offeringData = fullBloomsData.value[newXid]
+
+    // ALWAYS ensure we have the offeringType. If it's missing from the URL, grab it from our data dictionary.
+    if (!targetOfferingType && offeringData) {
+      targetOfferingType = offeringData.details?.offeringType || 'app'
+    }
     
+    // 2. Resolve the Period ID / Type
     if (history) {
       targetType = history.pType
       targetId = history.pId
       targetQuery = history.query || {} 
-    } else {
-      const offeringData = fullBloomsData.value[newXid]
-      if (offeringData) {
-        targetOfferingType = offeringData.details?.offeringType || targetOfferingType
-        const blooms = offeringData.blooms || []
-        if (blooms.length > 0) {
-          const latest = [...blooms].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
-          targetType = latest.bloomType
-          targetId = latest.bloomKey
-        }
+    } else if (offeringData) {
+      const blooms = offeringData.blooms || []
+      if (blooms.length > 0) {
+        const latest = [...blooms].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+        targetType = latest.bloomType
+        targetId = latest.bloomKey
       }
     }
 
+    // 3. Construct the router parameters
     const newParams = { ...route.params }
     newParams.offeringXid = newXid
     if (targetOfferingType) newParams.offeringType = targetOfferingType
@@ -374,6 +386,7 @@ const activeOffering = computed({
     if (targetId) newParams.periodId = targetId
     if (!newParams.orgXid) newParams.orgXid = appStore.orgXid 
 
+    // 4. Safely push!
     router.push({
       name: targetRouteName,
       params: newParams,

@@ -23,7 +23,8 @@
           :to="`/${appStore.orgXid}/home`" 
           :class="[
             'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            (route.name === 'home' || route.name === 'Home') ? 'bg-slate-800 text-white' : ''
+            (route.name === 'home' || route.name === 'Home') ? 'bg-slate-800 text-white' : '',
+            ui.isLeftCollapsed ? 'justify-center' : '' // 🔥 Centers icon when collapsed
           ]"
         >
           <HomeIcon class="w-5 h-5 shrink-0" />
@@ -36,7 +37,8 @@
           :to="dashboardLink" 
           :class="[
             'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            route.name === 'BloomDashboard' ? 'bg-slate-800 text-white' : ''
+            route.name === 'BloomDashboard' ? 'bg-slate-800 text-white' : '',
+            ui.isLeftCollapsed ? 'justify-center' : ''
           ]"
         >
           <DashboardIcon class="w-5 h-5 shrink-0" />
@@ -47,7 +49,8 @@
           :to="reportLink" 
           :class="[
             'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            route.name === 'BloomReport' ? 'bg-slate-800 text-white' : ''
+            route.name === 'BloomReport' ? 'bg-slate-800 text-white' : '',
+            ui.isLeftCollapsed ? 'justify-center' : ''
           ]"
         >
           <ReportIcon class="w-5 h-5 shrink-0" />
@@ -60,7 +63,8 @@
           :to="`/${appStore.orgXid}/pipelines`" 
           :class="[
             'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            route.name === 'Pipelines' ? 'bg-slate-800 text-white' : ''
+            route.name === 'Pipelines' ? 'bg-slate-800 text-white' : '',
+            ui.isLeftCollapsed ? 'justify-center' : ''
           ]"
         >
           <PipelineIcon class="w-5 h-5 shrink-0" />
@@ -71,7 +75,8 @@
           :to="`/${appStore.orgXid}/connectors`" 
           :class="[
             'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            route.name === 'Connectors' ? 'bg-slate-800 text-white' : ''
+            route.name === 'Connectors' ? 'bg-slate-800 text-white' : '',
+            ui.isLeftCollapsed ? 'justify-center' : ''
           ]"
         >
           <ConnectorIcon class="w-5 h-5 shrink-0" />
@@ -82,10 +87,16 @@
 
       <div class="relative p-3 border-t border-slate-800 shrink-0">
         
-        <div v-if="isUserMenuOpen" class="absolute bottom-full left-3 mb-2 w-56 bg-slate-800 rounded-xl shadow-xl overflow-hidden border border-slate-700 z-50">
+        <div 
+          v-if="isUserMenuOpen" 
+          :class="[
+            'absolute w-56 bg-slate-800 rounded-xl shadow-xl overflow-hidden border border-slate-700 z-[100]',
+            ui.isLeftCollapsed ? 'left-[calc(100%+10px)] bottom-0' : 'bottom-full left-3 mb-2'
+          ]"
+        >
           <div class="px-4 py-3 border-b border-slate-700">
-            <p class="text-sm text-white font-bold truncate">Organization Admin</p>
-            <p class="text-xs text-slate-400 truncate">admin@example.com</p>
+            <p class="text-sm text-white font-bold truncate">{{ userName }}</p>
+            <p class="text-xs text-slate-400 truncate">{{ userEmail }}</p>
           </div>
           
           <div class="p-1">
@@ -107,14 +118,17 @@
 
         <button 
           @click="isUserMenuOpen = !isUserMenuOpen" 
-          class="w-full flex items-center p-2 rounded-lg hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-bloom-primary focus:ring-opacity-50"
+          :class="[
+            'w-full flex items-center p-2 rounded-lg hover:bg-slate-800 transition-colors outline-none',
+            ui.isLeftCollapsed ? 'justify-center' : ''
+          ]"
         >
           <div class="w-8 h-8 rounded bg-slate-700 flex items-center justify-center text-white font-bold text-xs shrink-0">
-            AD
+            {{ userInitials }}
           </div>
-          <div :class="['ml-3 text-left transition-opacity duration-300 overflow-hidden', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">
-            <p class="text-sm font-medium text-white truncate">Admin</p>
-            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Access Settings</p>
+          <div :class="['text-left transition-opacity duration-300 overflow-hidden', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100 ml-3']">
+            <p class="text-sm font-medium text-white truncate">{{ userName }}</p>
+            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Workspace</p>
           </div>
         </button>
 
@@ -124,7 +138,6 @@
     <div class="flex-1 flex flex-col min-w-0 bg-slate-50 relative">
       
       <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shrink-0 z-40 w-full relative">
-        
         <div class="flex items-center gap-3">
           <button @click="ui.isLeftCollapsed = false" class="md:hidden text-slate-500 hover:text-slate-900 mr-2">☰</button>
           
@@ -164,7 +177,6 @@
           ]"
         >
           <div class="w-80 h-full flex flex-col bg-white">
-            
             <div class="flex border-b border-slate-200 shrink-0 overflow-x-auto hide-scrollbar">
               <button v-for="tab in ui.rightTabs" :key="tab.id" @click="ui.activeRightTab = tab.id" :class="['flex-1 min-w-[120px] py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2', ui.activeRightTab === tab.id ? 'text-bloom-primary border-b-2 border-bloom-primary' : 'text-slate-500 hover:text-slate-800']">
                 <span v-if="tab.icon" v-html="tab.icon" class="w-4 h-4"></span>
@@ -184,7 +196,6 @@
                 Currently viewing: <strong class="text-slate-800">{{ ui.activeRightTab }}</strong> panel.
               </div>
             </div>
-
           </div>
         </aside>
 
@@ -194,7 +205,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import { useBloomStore } from '@/stores/bloom'
@@ -228,29 +239,65 @@ const fullBloomsData = ref({})
 const lastVisitedMap = ref({}) 
 const isUserMenuOpen = ref(false)
 
-// Global View Guard: Views that shouldn't show offering-specific UI
 const isGlobalView = computed(() => {
   return ['home', 'Home', 'Pipelines', 'Connectors', 'Billing', 'Settings'].includes(route.name)
 })
 
-// Strict Guard: Only show Right Sidebar on BloomReport
 const isSidebarEffectivelyOpen = computed(() => {
   return ui.isRightOpen && route.name === 'BloomReport'
 })
 
-// Handle Logout
-const handleLogout = async () => {
-  isUserMenuOpen.value = false
-  try {
-    // Await your auth logout logic here
-    router.push('/login')
-  } catch (err) {
-    console.error("Logout failed", err)
+// -- USER MENU --
+let windowWidth = window.innerWidth
+const handleResize = () => {
+  const newWidth = window.innerWidth
+  // Only close the menu if we cross the 768px (md) breakpoint
+  if ((windowWidth >= 768 && newWidth < 768) || (windowWidth < 768 && newWidth >= 768)) {
+    if (isUserMenuOpen.value) isUserMenuOpen.value = false
   }
+  windowWidth = newWidth
 }
 
-// 1. UI Store Memory Update Watcher
-// Records the user's path into the UI Store when viewing an offering
+watch(() => ui.isLeftCollapsed, () => {
+  isUserMenuOpen.value = false
+})
+
+const userName = computed(() => {
+  const profile = appStore.session?.principal?.profile;
+  if (!profile) return 'User';
+  
+  const first = profile.givenName || '';
+  const last = profile.familyName || '';
+  const full = `${first} ${last}`.trim();
+
+  // Prioritize combined First + Last, fallback to displayName
+  return full || profile.displayName || 'User';
+});
+
+const userEmail = computed(() => {
+  const xids = appStore.session?.principal?.xids || [];
+  const emailObj = xids.find(x => x.type === 'email');
+  return emailObj ? emailObj.value : 'No email provided';
+});
+
+const userInitials = computed(() => {
+  const name = userName.value;
+  if (name === 'User') return 'U';
+  
+  // Grab the first letter of the first two words (e.g., "Platform Admin" -> "PA")
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  // Fallback to first two letters of a single word
+  return name.substring(0, 2).toUpperCase();
+});
+
+const handleLogout = () => {
+  isUserMenuOpen.value = false;
+  window.location.href = `${import.meta.env.VITE_AUTH_URL}/logout`;
+};
+
 watch(
   () => route.fullPath,
   () => {
@@ -260,7 +307,6 @@ watch(
   { immediate: true }
 )
 
-// 2. Memory bank watcher (Filter / Query State)
 watch(
   () => [route.params.offeringXid, route.params.periodType, route.params.periodId, route.query, route.name],
   ([xid, pType, pId, currentQuery, routeName]) => {
@@ -275,7 +321,6 @@ watch(
   { immediate: true, deep: true }
 )
 
-// Layout snap watcher
 const enableTransitions = ref(true)
 watch(
   () => route.name,
@@ -289,7 +334,6 @@ watch(
   }
 )
 
-// Active Offering Dropdown Model
 const activeOffering = computed({
   get: () => route.params.offeringXid || '',
   set: (newXid) => {
@@ -324,7 +368,6 @@ const activeOffering = computed({
     }
 
     const newParams = { ...route.params }
-    
     newParams.offeringXid = newXid
     if (targetOfferingType) newParams.offeringType = targetOfferingType
     if (targetType) newParams.periodType = targetType
@@ -339,14 +382,11 @@ const activeOffering = computed({
   }
 })
 
-// Dynamic Dashboard Link (Uses UI Store Memory when on Home Page)
 const dashboardLink = computed(() => {
   const xid = route.params.offeringXid
-  
   if (!xid) return ui.lastDashboardRoute || `/${appStore.orgXid}/home`
 
   const history = lastVisitedMap.value[xid]?.dashboard
-
   let oType = route.params.offeringType
   let pType = route.params.periodType
   let pId = route.params.periodId
@@ -384,10 +424,8 @@ const dashboardLink = computed(() => {
   }
 })
 
-// Dynamic Report Link (Uses UI Store Memory when on Home Page)
 const reportLink = computed(() => {
   const xid = route.params.offeringXid
-  
   if (!xid) return ui.lastReportRoute || `/${appStore.orgXid}/home`
 
   const history = lastVisitedMap.value[xid]?.report
@@ -415,6 +453,8 @@ const reportLink = computed(() => {
 })
 
 onMounted(async () => {
+  window.addEventListener('resize', handleResize) 
+
   try {
     await appStore.fetchSession()
     await bloomStore.loadAvailableBlooms()
@@ -462,7 +502,6 @@ onMounted(async () => {
         
         latestReportRoute.value = defaultReport 
 
-        // Seed the UI store with initial valid routes so buttons work immediately on first boot!
         if (!ui.lastReportRoute) ui.lastReportRoute = defaultReport
         if (!ui.lastDashboardRoute) ui.lastDashboardRoute = defaultDashboard
       }
@@ -470,6 +509,10 @@ onMounted(async () => {
   } catch (err) {
     console.error("Failed to load available offerings", err)
   }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 

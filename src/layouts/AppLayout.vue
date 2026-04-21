@@ -20,7 +20,7 @@
       <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-2 px-3 hide-scrollbar">
         
         <RouterLink 
-          :to="`/${appStore.orgXid}/home`" 
+          :to="getRoute('home')"
           :class="[
             'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
             (route.name === 'home' || route.name === 'Home') ? 'bg-slate-800 text-white' : '',
@@ -60,7 +60,7 @@
         <div :class="['my-2 border-t border-slate-800', ui.isLeftCollapsed ? 'mx-2' : 'mx-0']"></div>
 
         <RouterLink 
-          :to="`/${appStore.orgXid}/pipelines`" 
+          :to="getRoute('pipelines')"
           :class="[
             'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
             route.name === 'Pipelines' ? 'bg-slate-800 text-white' : '',
@@ -72,7 +72,7 @@
         </RouterLink>
 
         <RouterLink 
-          :to="`/${appStore.orgXid}/connectors`" 
+          :to="getRoute('connectors')"
           :class="[
             'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
             route.name === 'Connectors' ? 'bg-slate-800 text-white' : '',
@@ -100,10 +100,10 @@
           </div>
           
           <div class="p-1">
-            <RouterLink @click="isUserMenuOpen = false" :to="`/${appStore.orgXid}/billing`" class="flex items-center px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
+            <RouterLink @click="isUserMenuOpen = false" :to="getRoute('billing')" class="flex items-center px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
               <BillingIcon class="w-4 h-4 mr-2" /> Billing
             </RouterLink>
-            <RouterLink @click="isUserMenuOpen = false" :to="`/${appStore.orgXid}/settings`" class="flex items-center px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
+            <RouterLink @click="isUserMenuOpen = false" :to="getRoute('settings')" class="flex items-center px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
               <SettingsIcon class="w-4 h-4 mr-2" /> Settings
             </RouterLink>
           </div>
@@ -171,8 +171,12 @@
       </header>
 
       <div class="flex-1 flex overflow-hidden relative">
-        <main class="flex-1 overflow-y-auto hide-scrollbar">
-          <RouterView />
+        <main class="flex-1 overflow-y-auto hide-scrollbar flex flex-col">
+          
+          <SystemError v-if="appStore.error" :message="appStore.error" />
+          
+          <RouterView v-else />
+          
         </main>
         
         <aside 
@@ -232,6 +236,9 @@ import PanelIcon from '@/components/icons/PanelIcon.vue'
 import TaxonomyTree from '@/components/bloom/TaxonomyTree.vue'
 import InteractionExplorer from '@/components/bloom/InteractionExplorer.vue'
 
+// General Components
+import SystemError from '@/components/common/SystemError.vue'
+
 const ui = useUiStore()
 const bloomStore = useBloomStore()
 const appStore = useAppStore()
@@ -252,6 +259,8 @@ const isGlobalView = computed(() => {
 const isSidebarEffectivelyOpen = computed(() => {
   return ui.isRightOpen && route.name === 'BloomReport'
 })
+
+const getRoute = (path) => appStore.orgXid ? `/${appStore.orgXid}/${path}` : ''
 
 // -- USER MENU --
 let windowWidth = window.innerWidth
@@ -397,7 +406,7 @@ const activeOffering = computed({
 
 const dashboardLink = computed(() => {
   const xid = route.params.offeringXid
-  if (!xid) return ui.lastDashboardRoute || `/${appStore.orgXid}/home`
+  if (!xid) return ui.lastDashboardRoute || getRoute('home')
 
   const history = lastVisitedMap.value[xid]?.dashboard
   let oType = route.params.offeringType
@@ -422,7 +431,7 @@ const dashboardLink = computed(() => {
   const finalPType = history ? history.pType : pType
   const finalPId = history ? history.pId : pId
 
-  if (!finalOrg || !finalOType || !finalPType || !finalPId) return `/${appStore.orgXid}/home`
+  if (!finalOrg || !finalOType || !finalPType || !finalPId) return getRoute('home')
 
   return {
     name: 'BloomDashboard',
@@ -439,7 +448,7 @@ const dashboardLink = computed(() => {
 
 const reportLink = computed(() => {
   const xid = route.params.offeringXid
-  if (!xid) return ui.lastReportRoute || `/${appStore.orgXid}/home`
+  if (!xid) return ui.lastReportRoute || getRoute('home')
 
   const history = lastVisitedMap.value[xid]?.report
 
@@ -447,7 +456,8 @@ const reportLink = computed(() => {
     const finalOrg = route.params.orgXid || appStore.orgXid
     const finalOType = route.params.offeringType
     
-    if (!finalOrg || !finalOType || !history.pType || !history.pId) return `/${appStore.orgXid}/home`
+    // 🔥 FIX: Use the safe getRoute helper for the fallback
+    if (!finalOrg || !finalOType || !history.pType || !history.pId) return getRoute('home')
 
     return {
       name: 'BloomReport', 
@@ -461,8 +471,8 @@ const reportLink = computed(() => {
       query: history.query || {}
     }
   }
-  
-  return ui.lastReportRoute || `/${appStore.orgXid}/home`
+
+  return ui.lastReportRoute || getRoute('home')
 })
 
 onMounted(async () => {

@@ -25,7 +25,7 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <DashboardCommandRibbon class="col-span-1 lg:col-span-3" />
+      <DashboardRibbon class="col-span-1 lg:col-span-3" />
       <div class="col-span-1 lg:col-span-2"><ExecutiveSummaryStats /></div>
       <div class="col-span-1 lg:col-span-1"><TopTaxonomyWidget /></div>      
       <div class="col-span-1 lg:col-span-3"><PrimaryTrendChart /></div>
@@ -44,7 +44,7 @@ import { useUiStore } from '@/stores/ui'
 
 // Components
 import Dropdown from '@/components/common/Dropdown.vue'
-import DashboardCommandRibbon from '@/components/dashboard/DashboardCommandRibbon.vue'
+import DashboardRibbon from '@/components/dashboard/DashboardRibbon.vue'
 import PrimaryTrendChart from '@/components/dashboard/PrimaryTrendChart.vue'
 import JoySparklinesList from '@/components/dashboard/JoySparklinesList.vue'
 import ExecutiveSummaryStats from '@/components/dashboard/ExecutiveSummaryStats.vue'

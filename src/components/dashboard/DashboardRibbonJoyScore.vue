@@ -22,9 +22,13 @@
     </div>
     
     <div class="hidden md:flex min-h-[40px] flex-col justify-center mt-1">
+      
       <div v-if="!uiState.showJoyDimensions" class="text-[11px] lg:text-xs font-medium text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-3">
         Encompasses <strong>{{ formattedInteractions }}</strong> interactions<br />
-        across <strong>{{ availableSources.length }}</strong> {{ availableSources.length === 1 ? 'source' : 'sources' }}
+        across <strong>{{ displayedSourceCount }}</strong> {{ displayedSourceCount === 1 ? 'source' : 'sources' }}
+        <template v-if="smartLocale">
+          & <strong>{{ smartLocale.count }}</strong> {{ smartLocale.label }}
+        </template>
       </div>
 
       <div v-else class="flex flex-col gap-1.5 w-full pr-4 animate-in fade-in duration-300">
@@ -49,18 +53,62 @@
 
 <script setup>
 import { reactive, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
 
 const bloomStore = useBloomStore()
+const route = useRoute()
 
 const uiState = reactive({
   showJoyDimensions: false
 })
 
-const availableSources = computed(() => {
+// --- SMART LOCALE & SOURCE ROUTING ---
+
+// 1. Unfiltered baseline of all available sources
+const allAvailableSources = computed(() => {
   if (!bloomStore.sourceInteractionStats) return []
   return Object.keys(bloomStore.sourceInteractionStats)
 })
+
+// 2. The currently active source from the URL filter (or 'all')
+const activeSource = computed(() => route.query.srcId || 'all')
+
+// 3. Smart count: if filtered to 1 source, say "1 source". Otherwise, show total.
+const displayedSourceCount = computed(() => {
+  if (activeSource.value !== 'all') return 1;
+  return allAvailableSources.value.length;
+})
+
+// 4. Smart Locale Detection
+const smartLocale = computed(() => {
+  let targetSource = null;
+  
+  if (activeSource.value !== 'all') {
+    targetSource = activeSource.value; // Explicitly filtered
+  } else if (allAvailableSources.value.length === 1) {
+    targetSource = allAvailableSources.value[0]; // Natively only has 1 source
+  }
+
+  if (!targetSource) return null;
+
+  const stats = bloomStore.sourceInteractionStats?.[targetSource];
+  if (!stats) return null;
+
+  if (targetSource === 'apple_app_store' && stats.country) {
+    const count = Object.keys(stats.country).filter(c => c !== 'global' && c !== 'default').length;
+    return { count, label: count === 1 ? 'country' : 'countries' };
+  }
+
+  if (targetSource === 'google_play' && stats.lang) {
+    const count = Object.keys(stats.lang).filter(l => l !== 'global' && l !== 'default').length;
+    return { count, label: count === 1 ? 'language' : 'languages' };
+  }
+
+  return null;
+})
+
+// --- MATH & FORMATTING ---
 
 const formatNumber = (num) => new Intl.NumberFormat('en-US').format(num || 0)
 
@@ -91,8 +139,6 @@ const uniqueInteractionCount = computed(() => {
   })
   return unique.size
 })
-
-
 
 const joyLabel = computed(() => bloomStore.joyStats?.scoreDescription || 'Loading...')
 const joyEmoji = computed(() => getEmoji(joyLabel.value))

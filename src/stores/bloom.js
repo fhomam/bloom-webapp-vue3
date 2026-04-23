@@ -61,6 +61,7 @@ export const useBloomStore = defineStore('bloom', () => {
   const isLoading = ref(false)
   const error = ref(null)
   const availableBloomsDirectory = ref({})
+  const pmiHistory = ref([])
 
   // --- GETTERS ---
   
@@ -143,10 +144,9 @@ export const useBloomStore = defineStore('bloom', () => {
     isLoading.value = true
     error.value = null
     try {
-      // 1. Extract filters safely
       const { filters = {}, ...basePayload } = payload
 
-      // 2. Base payload for dropdowns/meta (NO FILTERS)
+      // Base payload (NO FILTERS - Perfect for PMI macro-metrics)
       const corePayload = {
         orgId: basePayload.orgId,
         bloomKey: basePayload.bloomKey,
@@ -155,28 +155,30 @@ export const useBloomStore = defineStore('bloom', () => {
         offeringType: basePayload.offeringType || 'app'
       }
 
-      // 3. Filtered payload specifically for the dashboard stats
+      // Filtered payload
       const bloomApiPayload = {
         ...corePayload,
         country: filters.country && filters.country !== 'all' ? filters.country : undefined,
-        lang: filters.lang && filters.lang !== 'all' ? filters.lang : undefined, // 🔥 NEW: Pass lang filter
+        lang: filters.lang && filters.lang !== 'all' ? filters.lang : undefined, 
         srcId: filters.srcId && filters.srcId !== 'all' ? filters.srcId : undefined
       }
 
-      // 4. Fetch simultaneously! 
-      const [bloomRes, contextRes, themesRes, statsRes, sourceRes] = await Promise.all([
+      // Added getBloomPmiTimeline to the Promise.all array
+      const [bloomRes, contextRes, themesRes, statsRes, sourceRes, pmiRes] = await Promise.all([
         api.getBloom(bloomApiPayload),               
         api.getAppOffering(corePayload),             
         api.getAllThemes(corePayload),               
-        api.getBloomSourceInteractionStats(corePayload), // 🔥 NEW: Updated API method
-        api.getBloomSourcesWithVersion(corePayload)  
+        api.getBloomSourceInteractionStats(corePayload), 
+        api.getBloomSourcesWithVersion(corePayload),
+        api.getBloomPmiTimeline(corePayload) 
       ])
       
       currentBloom.value = bloomRes
       offeringContext.value = contextRes
       themes.value = themesRes
-      sourceInteractionStats.value = statsRes // 🔥 NEW: Renamed state variable
+      sourceInteractionStats.value = statsRes 
       sourcesWithVersion.value = sourceRes
+      pmiHistory.value = pmiRes // 🔥 Save PMI Data
     } catch (err) {
       console.error(err)
       error.value = "Failed to load Dashboard data."
@@ -213,7 +215,7 @@ export const useBloomStore = defineStore('bloom', () => {
 
       // 4. Execute all 5 calls simultaneously 
       const [bloomRes, contextRes, themesRes, statsRes, sourceRes] = await Promise.all([
-        api.getBloom(bloomApiPayload),               
+        api.getBloom(bloomApiPayload),         
         api.getAppOffering(corePayload),             
         api.getAllThemes(corePayload),               
         api.getBloomSourceInteractionStats(corePayload), // 🔥 NEW: Updated API method
@@ -243,10 +245,13 @@ export const useBloomStore = defineStore('bloom', () => {
     }
   }
 
+
+
   return { 
     currentBloom, offeringContext, themes, sourceInteractionStats, 
     sourcesWithVersion, isLoading, error, allIssues, joyStats, 
     taxoStats, getFilteredAndSortedIssues,loadReportData, 
-    loadDashboardData, availableBloomsDirectory,loadAvailableBlooms
+    loadDashboardData, availableBloomsDirectory,loadAvailableBlooms,
+    pmiHistory
   }
 })

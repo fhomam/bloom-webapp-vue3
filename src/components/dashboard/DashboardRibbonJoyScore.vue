@@ -24,7 +24,7 @@
     <div class="hidden md:flex min-h-[40px] flex-col justify-center mt-1">
       <div v-if="!uiState.showJoyDimensions" class="text-[11px] lg:text-xs font-medium text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-3">
         Encompasses <strong>{{ formattedInteractions }}</strong> interactions<br />
-        across <strong>{{ availableCountries.length }}</strong> countries & <strong>{{ availableSources.length }}</strong> sources
+        across <strong>{{ availableSources.length }}</strong> {{ availableSources.length === 1 ? 'source' : 'sources' }}
       </div>
 
       <div v-else class="flex flex-col gap-1.5 w-full pr-4 animate-in fade-in duration-300">
@@ -62,21 +62,6 @@ const availableSources = computed(() => {
   return Object.keys(bloomStore.sourceInteractionStats)
 })
 
-const availableCountries = computed(() => {
-  if (!bloomStore.sourceInteractionStats) return []
-  const unique = new Set()
-  Object.values(bloomStore.sourceInteractionStats).forEach(sourceData => {
-    if (sourceData.country) {
-      Object.keys(sourceData.country).forEach(countryCode => {
-        if (countryCode !== 'global' && countryCode !== 'default') {
-          unique.add(countryCode)
-        }
-      })
-    }
-  })
-  return Array.from(unique).sort()
-})
-
 const formatNumber = (num) => new Intl.NumberFormat('en-US').format(num || 0)
 
 const getEmoji = (desc) => {
@@ -98,9 +83,20 @@ const joyScore = computed(() => {
   return typeof score === 'number' ? score.toFixed(2) : '0.00'
 })
 
+// Deduplicate interactions using a Set to prevent double-counting
+const uniqueInteractionCount = computed(() => {
+  const unique = new Set()
+  bloomStore.allIssues?.forEach(issue => {
+    issue.interactions?.forEach(i => unique.add(i.id))
+  })
+  return unique.size
+})
+
+
+
 const joyLabel = computed(() => bloomStore.joyStats?.scoreDescription || 'Loading...')
 const joyEmoji = computed(() => getEmoji(joyLabel.value))
-const formattedInteractions = computed(() => formatNumber(bloomStore.joyStats?.metrics?.reviewsAnalyzed))
+const formattedInteractions = computed(() => formatNumber(uniqueInteractionCount.value))
 
 const dimensions = computed(() => {
   const m = bloomStore.joyStats?.metrics

@@ -144,14 +144,16 @@ const getBaseReportUrl = () => {
 const getThemeUrl = (themeId) => `${getBaseReportUrl()}?theme=${themeId}`
 const getClassUrl = (classType) => `${getBaseReportUrl()}?class=${classType}`
 
-// Aggregation Engine
+// Aggregation Engine (Updated to use Sets for exact deduplication)
 const stats = computed(() => {
   const issues = bloomStore.allIssues || []
   
   let backlogIssuesCount = 0
-  let backlogInteractionsCount = 0
   let generalIssuesCount = 0
-  let generalInteractionsCount = 0
+  
+  // Use Sets to prevent double-counting interactions mapped to multiple issues
+  const uniqueBacklogInteractions = new Set()
+  const uniqueGeneralInteractions = new Set()
   
   let reachSum = 0
   let reachCount = 0
@@ -161,12 +163,14 @@ const stats = computed(() => {
   const themeCounts = {}
 
   issues.forEach(issue => {
-    const intCount = issue.interactions?.length || 0
     const isActionable = issue.class === 'backlog-candidate' || (!issue.class && !issue.taxo?.includes('non_issue'))
 
     if (isActionable) {
       backlogIssuesCount++
-      backlogInteractionsCount += intCount
+      // Add interaction IDs to the Set (duplicates are automatically ignored)
+      if (issue.interactions) {
+        issue.interactions.forEach(i => uniqueBacklogInteractions.add(i.id))
+      }
       
       if (issue.rice) {
         if (issue.rice.reach?.value !== undefined) {
@@ -180,7 +184,9 @@ const stats = computed(() => {
       }
     } else {
       generalIssuesCount++
-      generalInteractionsCount += intCount
+      if (issue.interactions) {
+        issue.interactions.forEach(i => uniqueGeneralInteractions.add(i.id))
+      }
     }
 
     if (issue.themes && issue.themes.length > 0) {
@@ -196,8 +202,9 @@ const stats = computed(() => {
   const topThemes = Object.values(themeCounts).sort((a, b) => b.count - a.count).slice(0, 4)
 
   return {
-    backlog: { issues: backlogIssuesCount, interactions: backlogInteractionsCount },
-    general: { issues: generalIssuesCount, interactions: generalInteractionsCount },
+    // Return the size of the sets instead of the flat sum!
+    backlog: { issues: backlogIssuesCount, interactions: uniqueBacklogInteractions.size },
+    general: { issues: generalIssuesCount, interactions: uniqueGeneralInteractions.size },
     rice: { avgReach, avgImpact },
     topThemes
   }

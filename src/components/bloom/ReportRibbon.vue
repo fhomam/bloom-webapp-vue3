@@ -247,11 +247,18 @@ const safeJoyScore = computed(() => {
   return (typeof score === 'number' ? score : 0).toFixed(2);
 })
 
-const safeReviewsAnalyzed = computed(() => {
-  const count = bloomStore.joyStats?.metrics?.reviewsAnalyzed || 0;
-  return count > 999 ? (count/1000).toFixed(1) + 'k' : count.toString();
+const uniqueInteractionCount = computed(() => {
+  const unique = new Set()
+  bloomStore.allIssues?.forEach(issue => {
+    issue.interactions?.forEach(i => unique.add(i.id))
+  })
+  return unique.size
 })
 
+const safeReviewsAnalyzed = computed(() => {
+  const count = uniqueInteractionCount.value;
+  return count > 999 ? (count/1000).toFixed(1) + 'k' : count.toString();
+})
 const appName = computed(() => bloomStore.offeringContext?.name || 'Loading...')
 const developerName = computed(() => bloomStore.offeringContext?.developer?.name || '')
 const safeRatingScore = computed(() => {

@@ -20,7 +20,6 @@
       <div class="flex items-center gap-1.5 lg:gap-2">
         
         <div class="flex items-end gap-[2px] lg:gap-[3px] h-3.5 lg:h-5 mr-1">
-          
           <div v-for="(q, idx) in pmiMetrics.bars" :key="idx" class="relative h-full flex items-end">
             
             <div 
@@ -72,15 +71,15 @@
         </span>
       </div>
       
-      <span class="text-[9px] lg:text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1 text-center min-[480px]:text-right">
+      <span class="text-[8px] lg:text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1 text-center min-[480px]:text-right">
         Product Market Impedance
       </span>
 
       <div v-if="uiState.showMainDetails" class="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 shadow-xl rounded-xl p-4 z-50 text-left animate-in fade-in zoom-in-95 duration-200">
-        <p v-if="pmiMetrics.current.status === 'valid'" class="text-xs text-slate-600 leading-relaxed mb-3">
+        <p v-if="pmiMetrics.current?.status === 'valid'" class="text-xs text-slate-600 leading-relaxed mb-3">
           PMI measures friction versus value flow. Evaluated strictly on a quarterly basis to provide a stable measure of product health, regardless of selected date filters.
         </p>
-        <p v-else-if="pmiMetrics.current.status === 'insufficient_data'" class="text-xs text-amber-700 bg-amber-50 rounded p-2 border border-amber-100 leading-relaxed mb-3">
+        <p v-else-if="pmiMetrics.current?.status === 'insufficient_data'" class="text-xs text-amber-700 bg-amber-50 rounded p-2 border border-amber-100 leading-relaxed mb-3">
           <strong>Pending Data:</strong> PMI requires a minimum of 100 analyzed interactions for statistical significance.
         </p>
         <p v-else class="text-xs text-slate-500 bg-slate-50 rounded p-2 border border-slate-100 leading-relaxed mb-3">
@@ -124,13 +123,11 @@ const toggleBarPopup = (idx, event) => {
   
   uiState.activeBarIdx = idx
 
-  // JS Boundary Checking: Measure exactly where the click happened on screen
   if (event) {
     const rect = event.currentTarget.getBoundingClientRect()
     const spaceRight = window.innerWidth - rect.right
     const spaceLeft = rect.left
     
-    // The popup is w-44 (176px). If there is less than ~90px on either side, push it inward.
     if (spaceRight < 90) {
       uiState.popupBoxStyle = { right: '-12px', left: 'auto' }
       uiState.popupPointerStyle = { right: '14px', left: 'auto' }
@@ -138,7 +135,6 @@ const toggleBarPopup = (idx, event) => {
       uiState.popupBoxStyle = { left: '-12px', right: 'auto' }
       uiState.popupPointerStyle = { left: '14px', right: 'auto' }
     } else {
-      // Plenty of room: perfectly center the popup above the bar
       uiState.popupBoxStyle = { left: '50%', transform: 'translateX(-50%)' }
       uiState.popupPointerStyle = { left: '50%', transform: 'translateX(-50%)' }
     }
@@ -163,61 +159,19 @@ const companyMeta = computed(() => ({
   users: bloomStore.offeringContext?.installs ? formatCompact(bloomStore.offeringContext.installs) : 'Unknown'
 }))
 
-// --- MOCK DATA LOGIC ---
-const activeTestScenario = ref('happyPath') 
-
-const mockPmiDatasets = {
-  happyPath: [
-    { period: '2025Q2', pmi: 2.1, status: 'valid', interactionVolume: 840 },
-    { period: '2025Q3', pmi: 2.5, status: 'valid', interactionVolume: 1205 },
-    { period: '2025Q4', pmi: 2.8, status: 'valid', interactionVolume: 1650 },
-    { period: '2026Q1', pmi: 3.2, status: 'valid', interactionVolume: 2100 }
-  ],
-  missingCurrent: [
-    { period: '2025Q2', pmi: 4.1, status: 'valid', interactionVolume: 3200 },
-    { period: '2025Q3', pmi: 3.8, status: 'valid', interactionVolume: 3450 },
-    { period: '2025Q4', pmi: 3.5, status: 'valid', interactionVolume: 3800 },
-    { period: '2026Q1', pmi: null, status: 'unprocessed' }
-  ],
-  insufficientData: [
-    { period: '2025Q2', pmi: 1.1, status: 'valid', interactionVolume: 500 },
-    { period: '2025Q3', pmi: 1.4, status: 'valid', interactionVolume: 620 },
-    { period: '2025Q4', pmi: 1.9, status: 'valid', interactionVolume: 710 },
-    { period: '2026Q1', pmi: null, status: 'insufficient_data', count: 42 }
-  ]
-}
-
+// --- NATIVE STORE INTEGRATION ---
 const pmiMetrics = computed(() => {
-  const rawData = mockPmiDatasets[activeTestScenario.value]
-  if (!rawData || rawData.length === 0) return { scoreDisplay: '--%', delta: null, bars: [] }
-
-  const dataMap = rawData.reduce((map, item) => map.set(item.period, item), new Map())
-  const sortedPeriods = Array.from(dataMap.keys()).sort((a, b) => a.localeCompare(b))
-  const latestPeriod = sortedPeriods[sortedPeriods.length - 1]
-
-  const getPreviousQuarter = (periodStr) => {
-    let year = parseInt(periodStr.slice(0, 4))
-    let q = parseInt(periodStr.slice(5))
-    if (q === 1) return `${year - 1}Q4`
-    return `${year}Q${q - 1}`
-  }
-
-  const q4 = latestPeriod
-  const q3 = getPreviousQuarter(q4)
-  const q2 = getPreviousQuarter(q3)
-  const q1 = getPreviousQuarter(q2)
-  const expectedTimeline = [q1, q2, q3, q4]
-
-  const data = expectedTimeline.map(period => {
-    if (dataMap.has(period)) return dataMap.get(period)
-    return { period, pmi: null, status: 'unprocessed' }
-  })
+  const data = bloomStore.pmiHistory
+  
+  // Safely fallback if data is missing or loading
+  if (!data || data.length < 4) return { current: null, scoreDisplay: '--%', delta: null, bars: [] }
 
   const current = data[3]
   const previous = data[2]
 
   let scoreDisplay = '--%'
   let scoreClass = 'text-slate-900'
+  
   if (current.status === 'valid') {
     scoreDisplay = `${current.pmi}%`
   } else if (current.status === 'insufficient_data') {

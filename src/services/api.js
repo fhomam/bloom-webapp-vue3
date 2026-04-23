@@ -52,6 +52,10 @@ export async function getHomePortfolio(payload) {
 
 export async function getHomeTrendingIssues(payload) {
    const response = await appClient.post(`/api/v1/get/home/trending-issues`, payload);
-   console.log(response.data);
+   return response.data.value || response.data;
+}
+
+export async function getBloomPmiTimeline(payload) {
+   const response = await appClient.post(`/api/v1/get/bloom/metrics/pmi`, payload);
    return response.data.value || response.data;
 }

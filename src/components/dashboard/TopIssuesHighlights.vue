@@ -20,7 +20,7 @@
         :to="getIssueUrl(issue.taxo)"
         :class="[
           'bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group flex-col cursor-pointer',
-          index === 3 ? 'hidden md:flex lg:hidden' : 'flex' // <-- The pure CSS responsive fix!
+          index === 3 ? 'hidden md:flex lg:hidden' : 'flex' 
         ]"
       >
         <div class="flex items-center justify-between mb-3 gap-3">
@@ -49,11 +49,11 @@
           <div class="flex items-center gap-3">
             <div class="flex flex-col">
               <span class="text-sm font-bold text-slate-800 leading-none">{{ formattedNumber(issue.interactions?.length || 0) }}</span>
-              <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">Reviews</span>
+              <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">Interactions</span>
             </div>
           </div>
           <span class="text-[10px] font-medium text-slate-400">
-            Updated {{ timeAgo(issue.updatedAt) }}
+            {{ getLatestInteractionDate(issue) }}
           </span>
         </div>
       </RouterLink>
@@ -85,7 +85,6 @@ const topIssues = computed(() => {
 
   const sorted = filtered.sort((a, b) => (b.interactions?.length || 0) - (a.interactions?.length || 0))
 
-  // Sliced to 4 to feed our responsive CSS layout!
   return sorted.slice(0, 4)
 })
 
@@ -102,30 +101,29 @@ const formattedNumber = (num) => {
   return new Intl.NumberFormat('en-US', { notation: "compact", compactDisplay: "short" }).format(num)
 }
 
-const timeAgo = (dateString) => {
-  if (!dateString) return 'recently'
-  const days = Math.floor((new Date() - new Date(dateString)) / (1000 * 60 * 60 * 24))
-  if (days === 0) return 'today'
-  if (days === 1) return 'yesterday'
-  return `${days} days ago`
+const getLatestInteractionDate = (issue) => {
+  if (!issue.interactions || issue.interactions.length === 0) return 'No interactions'
+
+  let latestMs = 0
+  issue.interactions.forEach(interaction => {
+    const timestamp = new Date(interaction.updatedAtSource || interaction.createdAt).getTime()
+    if (timestamp > latestMs) latestMs = timestamp
+  })
+
+  if (latestMs === 0) return 'Unknown date'
+
+  // Formats to "Latest: Oct 14" (or includes year if you prefer: { month: 'short', day: 'numeric', year: 'numeric' })
+  const dateObj = new Date(latestMs)
+  return `Latest: ${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}`
 }
 
 // --- ROUTING COMPOSERS ---
 const getBaseReportUrl = () => {
   const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
-  
-  if (!orgXid || !offeringXid || !periodId) {
-    return ''
-  }
-  
+  if (!orgXid || !offeringXid || !periodId) return ''
   return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}`
 }
 
-const getReportUrl = () => { 
-  return `${getBaseReportUrl()}?theme=top-issue` 
-}
-
-const getIssueUrl = (taxo) => {
-  return `${getBaseReportUrl()}?taxo=${taxo}`
-}
+const getReportUrl = () => `${getBaseReportUrl()}?theme=top-issue`
+const getIssueUrl = (taxo) => `${getBaseReportUrl()}?taxo=${taxo}`
 </script>

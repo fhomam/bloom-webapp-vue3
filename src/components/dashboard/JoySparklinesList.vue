@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
       <div class="flex flex-col">
         <h3 class="text-sm font-bold text-slate-800 tracking-tight">Emotional Trajectory</h3>
-        <span class="text-xs font-medium text-slate-500 mt-0.5">Rolling 28-day window</span>
+        <span class="text-xs font-medium text-slate-500 mt-0.5">Trailing 28-day window</span>
       </div>
     </div>
 
@@ -104,13 +104,9 @@ use([CanvasRenderer, LineChart, GridComponent])
 
 const bloomStore = useBloomStore()
 
-// State
 const selectedDimensionId = ref(null)
+const INTERACTION_LIST_LIMIT = 100 
 
-// Constants
-const INTERACTION_LIST_LIMIT = 100 // High enough to show "all" recent ones, but protects the DOM from crashing
-
-// 1. Fixed Order Configuration
 const dimOrder = ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']
 const dimConfig = {
   joy:          { id: 'joy', label: 'Joy', emoji: '✨', color: '#10b981', highlightClass: 'bg-emerald-100 text-emerald-900 font-semibold px-0.5 rounded' },
@@ -123,6 +119,21 @@ const dimConfig = {
 const selectedDimension = computed(() => selectedDimensionId.value ? dimConfig[selectedDimensionId.value] : null)
 const getEmojiForMetric = (metric) => dimConfig[metric]?.emoji || '😶'
 
+// 🔥 FIX 2: Data-Driven Temporal Anchor
+// Scans the active dataset to find the absolute latest interaction, anchoring "Now" to the end of the period.
+const anchorMs = computed(() => {
+  let max = 0
+  const issues = bloomStore.allIssues || []
+  for (const issue of issues) {
+    if (!issue.interactions) continue
+    for (const int of issue.interactions) {
+      const t = new Date(int.updatedAtSource || int.createdAt).getTime()
+      if (t > max) max = t
+    }
+  }
+  return max > 0 ? Math.min(Date.now(), max) : Date.now()
+})
+
 // 2. Process Pinia Data into Daily 28-Day Series
 const processedDimensions = computed(() => {
   const issues = bloomStore.allIssues || []
@@ -133,11 +144,11 @@ const processedDimensions = computed(() => {
     dim.totalCount = 0
   })
 
-  const now = Date.now()
+  // 🔥 Swapped Date.now() for our new temporal anchor
+  const now = anchorMs.value
   const dayInMs = 24 * 60 * 60 * 1000
   let totalInteractionsProcessed = 0
 
-  // Tally Daily Buckets
   issues.forEach(issue => {
     if (!issue.interactions) return
     issue.interactions.forEach(interaction => {
@@ -159,19 +170,14 @@ const processedDimensions = computed(() => {
     })
   })
 
-  // Enforce Strict Order & Calculate Percentages
   return dimOrder.map(metricId => {
     const dim = results[metricId]
     dim.value = totalInteractionsProcessed === 0 ? 0 : Math.round((dim.totalCount / totalInteractionsProcessed) * 100)
-    
-    // Fallback flatline if zero data
     if (dim.totalCount === 0) dim.history = new Array(28).fill(1)
-    
     return dim
   })
 })
 
-// 3. Smart Highlight Engine (Expands to Word Boundaries)
 const smartHighlight = (rawText, joyArray, targetMetric) => {
   if (!rawText) return ''
   const analysis = joyArray.find(j => j.metric === targetMetric)
@@ -179,18 +185,14 @@ const smartHighlight = (rawText, joyArray, targetMetric) => {
 
   const colorClass = dimConfig[targetMetric].highlightClass
   
-  // Expand bits to full words
   let expandedBits = analysis.bits.map(([start, end]) => {
     let s = start
     let e = end
-    // Expand left if the character before isn't whitespace/punctuation
     while (s > 0 && /\w/.test(rawText[s - 1])) s--
-    // Expand right if the character after isn't whitespace/punctuation
     while (e < rawText.length - 1 && /\w/.test(rawText[e + 1])) e++
     return [s, e]
   })
 
-  // Merge overlapping bit bounds so HTML tags don't break
   expandedBits.sort((a, b) => a[0] - b[0])
   let mergedBits = []
   expandedBits.forEach(bit => {
@@ -202,7 +204,6 @@ const smartHighlight = (rawText, joyArray, targetMetric) => {
     }
   })
 
-  // Splice string
   let result = ''
   let currentIndex = 0
   mergedBits.forEach(([start, end]) => {
@@ -215,13 +216,13 @@ const smartHighlight = (rawText, joyArray, targetMetric) => {
   return result
 }
 
-// 4. Feed Generator (Default to mixed latest, or filter by click, BOUND TO 28 DAYS)
 const verbatimFeed = computed(() => {
   let examples = []
   const seenIds = new Set() 
   const issues = bloomStore.allIssues || []
   
-  const now = Date.now()
+  // 🔥 Swapped Date.now() for our new temporal anchor
+  const now = anchorMs.value
   const dayInMs = 24 * 60 * 60 * 1000
 
   for (const issue of issues) {
@@ -229,27 +230,21 @@ const verbatimFeed = computed(() => {
     for (const interaction of issue.interactions) {
       if (!interaction.analysis?.joy) continue
       
-      // Enforce the 28-day window to match the sparklines
       const timestamp = new Date(interaction.updatedAtSource || interaction.createdAt).getTime()
       const daysAgo = Math.floor((now - timestamp) / dayInMs)
-      if (daysAgo < 0 || daysAgo >= 28) continue // Skip anything outside the 28-day window
+      if (daysAgo < 0 || daysAgo >= 28) continue 
 
       if (seenIds.has(interaction.id)) continue 
 
-      // Strictly filter to only include emotions that actually have bits applied
       const validEmotions = interaction.analysis.joy.filter(j => j.bits && j.bits.length > 0)
-      
-      // If no valid emotions apply to this interaction, skip it entirely
       if (validEmotions.length === 0) continue
 
-      // If a dimension is clicked, only grab if it contains that specific valid emotion
       if (selectedDimensionId.value) {
         if (validEmotions.some(j => j.metric === selectedDimensionId.value)) {
           examples.push(interaction)
           seenIds.add(interaction.id) 
         }
       } 
-      // If default view, grab interaction and tag it with its highest priority valid emotion
       else {
         const sortedEmotions = [...validEmotions].sort((a, b) => {
            return dimOrder.indexOf(a.metric) - dimOrder.indexOf(b.metric)
@@ -260,13 +255,11 @@ const verbatimFeed = computed(() => {
     }
   }
 
-  // Sort by newest and cap at our safe DOM limit
   return examples
     .sort((a, b) => new Date(b.updatedAtSource || b.createdAt).getTime() - new Date(a.updatedAtSource || a.createdAt).getTime())
     .slice(0, INTERACTION_LIST_LIMIT)
 })
 
-// 5. Daily ECharts Config
 const getSparklineOption = (dim) => {
   return {
     grid: { top: 5, right: 10, bottom: 15, left: 10 },
@@ -274,15 +267,15 @@ const getSparklineOption = (dim) => {
       type: 'category', 
       boundaryGap: false,
       axisLine: { show: true, lineStyle: { color: '#e2e8f0' } }, 
-      axisLabel: { showMinLabel: true, showMaxLabel: true, color: '#94a3b8', fontSize: 9, margin: 4, formatter: (value, index) => index === 0 ? '-28d' : (index === 27 ? 'Now' : '') },
+      axisLabel: { showMinLabel: true, showMaxLabel: true, color: '#94a3b8', fontSize: 9, margin: 4, formatter: (value, index) => index === 0 ? '-28d' : (index === 27 ? 'End' : '') }, // 🔥 Updated label to "End"
       axisTick: { show: false }
     },
     yAxis: { type: 'value', show: false, min: 'dataMin', max: 'dataMax' },
     series: [
       {
-        data: dim.history, // Daily buckets
+        data: dim.history,
         type: 'line',
-        smooth: 0.25, // Less smooth, more spikey
+        smooth: 0.25,
         showSymbol: false,
         lineStyle: { width: 2, color: dim.color },
         areaStyle: {

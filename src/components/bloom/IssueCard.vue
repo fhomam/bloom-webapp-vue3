@@ -87,7 +87,7 @@
         </div>
         
         <div class="flex items-center md:justify-between gap-2 md:gap-0">
-          <span>Updated<span class="md:hidden">:</span></span>
+          <span>Latest<span class="md:hidden">:</span></span>
           <span class="font-bold text-slate-900 whitespace-nowrap cursor-help text-right" :title="exactDate">
             {{ daysAgoLabel }}
           </span>

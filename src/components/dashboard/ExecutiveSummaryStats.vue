@@ -8,7 +8,7 @@
         </h3>
         <div 
           class="cursor-help text-slate-300 hover:text-slate-500 transition-colors" 
-          title="User interactions are grouped into auto-generated 'Packets' and classified by their actionability."
+          title="Packets are distinct value artifacts—synthesized from related user interactions—that represent a specific, actionable product issue or feedback theme."
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -35,7 +35,14 @@
                 <div class="flex items-center gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   {{ stats.backlog.issues === 1 ? 'Packet' : 'Packets' }}
                 </div>
-                <span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">+8%</span>
+                <span v-if="stats.backlog.issuesDelta !== null" :class="[
+                  'text-[9px] font-bold px-1.5 py-0.5 rounded border',
+                  stats.backlog.issuesDelta > 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 
+                  stats.backlog.issuesDelta < 0 ? 'text-rose-600 bg-rose-50 border-rose-100' :
+                  'text-slate-500 bg-slate-100 border-slate-200'
+                ]">
+                  {{ stats.backlog.issuesDelta > 0 ? '+' : '' }}{{ stats.backlog.issuesDelta }}%
+                </span>
               </div>
             </div>
             <div class="text-2xl text-slate-200 font-light mb-1 hidden sm:block">/</div>
@@ -62,16 +69,25 @@
                 <div class="flex items-center gap-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   {{ stats.general.issues === 1 ? 'Packet' : 'Packets' }}
                 </div>
-                <span class="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">-2%</span>
               </div>
             </div>
             <div class="text-xl text-slate-200 font-light mb-1 hidden sm:block">/</div>
             <div class="flex flex-col">
               <span class="text-lg font-bold text-slate-600 leading-none">{{ formattedNumber(stats.general.interactions) }}</span>
-              <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1.5">
-                <span class="hidden sm:inline">Interactions</span>
-                <span class="sm:hidden">Int.</span>
-              </span>
+              <div class="flex items-center gap-1.5 mt-1.5">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <span class="hidden sm:inline">Interactions</span>
+                  <span class="sm:hidden">Int.</span>
+                </span>
+                <span v-if="stats.general.interactionsDelta !== null" :class="[
+                  'text-[9px] font-bold px-1.5 py-0.5 rounded border',
+                  stats.general.interactionsDelta > 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 
+                  stats.general.interactionsDelta < 0 ? 'text-rose-600 bg-rose-50 border-rose-100' : 
+                  'text-slate-500 bg-slate-100 border-slate-200'
+                ]">
+                  {{ stats.general.interactionsDelta > 0 ? '+' : '' }}{{ stats.general.interactionsDelta }}%
+                </span>
+              </div>
             </div>
           </div>
         </RouterLink>
@@ -131,27 +147,20 @@ const bloomStore = useBloomStore()
 // URL Composers
 const getBaseReportUrl = () => {
   const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
-
-  // If we are missing critical routing parameters, return an empty string 
-  // so we don't accidentally navigate to an invalid /undefined/ path.
-  if (!orgXid || !offeringXid || !periodId) {
-    return ''
-  }
-
+  if (!orgXid || !offeringXid || !periodId) return ''
   return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}`
 }
 
 const getThemeUrl = (themeId) => `${getBaseReportUrl()}?theme=${themeId}`
 const getClassUrl = (classType) => `${getBaseReportUrl()}?class=${classType}`
 
-// Aggregation Engine (Updated to use Sets for exact deduplication)
+// Aggregation Engine 
 const stats = computed(() => {
   const issues = bloomStore.allIssues || []
   
   let backlogIssuesCount = 0
   let generalIssuesCount = 0
   
-  // Use Sets to prevent double-counting interactions mapped to multiple issues
   const uniqueBacklogInteractions = new Set()
   const uniqueGeneralInteractions = new Set()
   
@@ -167,7 +176,6 @@ const stats = computed(() => {
 
     if (isActionable) {
       backlogIssuesCount++
-      // Add interaction IDs to the Set (duplicates are automatically ignored)
       if (issue.interactions) {
         issue.interactions.forEach(i => uniqueBacklogInteractions.add(i.id))
       }
@@ -201,10 +209,31 @@ const stats = computed(() => {
   const avgImpact = impactCount > 0 ? (impactSum / impactCount).toFixed(2) : 0
   const topThemes = Object.values(themeCounts).sort((a, b) => b.count - a.count).slice(0, 4)
 
+  // --- DYNAMIC DELTA CALCULATION ---
+  let issuesDelta = null;
+  let interactionsDelta = null;
+  
+  const priorStats = bloomStore.priorExecutiveStats;
+  
+  if (priorStats?.priorBacklogIssues > 0) {
+    issuesDelta = Math.round(((backlogIssuesCount - priorStats.priorBacklogIssues) / priorStats.priorBacklogIssues) * 100);
+  }
+
+  if (priorStats?.priorGeneralInteractions > 0) {
+    interactionsDelta = Math.round(((uniqueGeneralInteractions.size - priorStats.priorGeneralInteractions) / priorStats.priorGeneralInteractions) * 100);
+  }
+
   return {
-    // Return the size of the sets instead of the flat sum!
-    backlog: { issues: backlogIssuesCount, interactions: uniqueBacklogInteractions.size },
-    general: { issues: generalIssuesCount, interactions: uniqueGeneralInteractions.size },
+    backlog: { 
+      issues: backlogIssuesCount, 
+      interactions: uniqueBacklogInteractions.size,
+      issuesDelta: issuesDelta 
+    },
+    general: { 
+      issues: generalIssuesCount, 
+      interactions: uniqueGeneralInteractions.size,
+      interactionsDelta: interactionsDelta 
+    },
     rice: { avgReach, avgImpact },
     topThemes
   }

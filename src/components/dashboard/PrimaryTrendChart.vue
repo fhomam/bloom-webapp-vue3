@@ -13,10 +13,19 @@
           <span class="text-3xl font-extrabold text-slate-900 tracking-tight leading-none">
             {{ activeMetric === 'joy' ? currentJoyAverage : (activeMetric === 'volume' ? currentVolumeTotal : currentIssuesTotal) }}
           </span>
-          <div class="flex items-center text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-            <svg class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-            5% vs last period
+          
+          <div v-if="currentDelta !== null" :class="[
+            'flex items-center text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border',
+            currentDelta > 0 ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 
+            currentDelta < 0 ? 'text-rose-600 bg-rose-50 border-rose-100' : 
+            'text-slate-500 bg-slate-100 border-slate-200'
+          ]">
+            <svg v-if="currentDelta > 0" class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+            <svg v-else-if="currentDelta < 0" class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+            
+            {{ Math.abs(currentDelta) }}% vs prior TTM
           </div>
+
         </div>
       </div>
 
@@ -63,13 +72,11 @@ import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, MarkLineComponent, LegendComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 
-// Ensure LegendComponent is registered so the stacked bar labels appear
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent, LegendComponent])
 
 const bloomStore = useBloomStore()
 
-// --- STATE ---
-const activeMetric = ref('joy') // 'joy', 'volume', or 'issues'
+const activeMetric = ref('joy') 
 const activeTimeframe = ref('weeks') 
 
 // --- TOPLINE METRICS ---
@@ -83,9 +90,19 @@ const currentVolumeTotal = computed(() => {
   return new Intl.NumberFormat('en-US').format(count)
 })
 
-// Accurately reflects ALL items tracked in the graph
 const currentIssuesTotal = computed(() => {
   return new Intl.NumberFormat('en-US').format(bloomStore.allIssues?.length || 0)
+})
+
+// 🔥 FIX: Delta Scaffolding
+// This watches the active tab and provides the correct delta for the selected metric.
+// If the data is null, the pill gracefully hides itself.
+const currentDelta = computed(() => {
+  // TODO: Replace with real Prior TTM math when the backend endpoint is wired up
+  if (activeMetric.value === 'joy') return 5;     // Mock: +5%
+  if (activeMetric.value === 'volume') return -12; // Mock: -12%
+  if (activeMetric.value === 'issues') return null; // Mock: Hide Pill (No prior data)
+  return null;
 })
 
 const JOY_FACTORS = { joy: 3, confidence: 2, engagement: 1, frustration: -1.5, hopelessness: -3 }

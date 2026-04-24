@@ -62,6 +62,10 @@ export const useBloomStore = defineStore('bloom', () => {
   const error = ref(null)
   const availableBloomsDirectory = ref({})
   const pmiHistory = ref([])
+  const priorExecutiveStats = ref({ 
+    priorBacklogIssues: null, 
+    priorGeneralInteractions: null 
+  })
 
   // --- GETTERS ---
   
@@ -170,7 +174,8 @@ export const useBloomStore = defineStore('bloom', () => {
         api.getAllThemes(corePayload),               
         api.getBloomSourceInteractionStats(corePayload), 
         api.getBloomSourcesWithVersion(corePayload),
-        api.getBloomPmiTimeline(corePayload) 
+        api.getBloomPmiTimeline(corePayload),
+        fetchPriorExecutiveStats(bloomApiPayload) // handles its own assignment
       ])
       
       currentBloom.value = bloomRes
@@ -245,13 +250,26 @@ export const useBloomStore = defineStore('bloom', () => {
     }
   }
 
-
+  async function fetchPriorExecutiveStats(payload) {
+    try {
+      const result = await api.getBloomExecutiveStatsDelta(payload)
+      
+      // Update ref with real data, maintaining reactivity
+      priorExecutiveStats.value = result || { priorBacklogIssues: null, priorGeneralInteractions: null }
+      console.log(result);
+      
+    } catch (error) {
+      console.error('Failed to fetch prior executive stats', error)
+      // Fallback safely so the UI pills hide gracefully
+      priorExecutiveStats.value = { priorBacklogIssues: null, priorGeneralInteractions: null } 
+    }
+  }
 
   return { 
     currentBloom, offeringContext, themes, sourceInteractionStats, 
     sourcesWithVersion, isLoading, error, allIssues, joyStats, 
     taxoStats, getFilteredAndSortedIssues,loadReportData, 
     loadDashboardData, availableBloomsDirectory,loadAvailableBlooms,
-    pmiHistory
+    pmiHistory, priorExecutiveStats, fetchPriorExecutiveStats
   }
 })

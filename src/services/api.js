@@ -59,3 +59,8 @@ export async function getBloomPmiTimeline(payload) {
    const response = await appClient.post(`/api/v1/get/bloom/metrics/pmi`, payload);
    return response.data.value || response.data;
 }
+
+export async function getBloomExecutiveStatsDelta(payload) {
+   const response = await appClient.post(`/api/v1/get/bloom/delta/executive/summary/stats`, payload);
+   return response.data.value || response.data;
+}

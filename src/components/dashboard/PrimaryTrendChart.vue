@@ -86,19 +86,20 @@ const activeTimeframe = ref('weeks')
 
 const ttmTrendData = computed(() => bloomStore.ttmTrendData)
 
-// --- TOPLINE METRICS (Now using the new payload!) ---
+// --- TOPLINE METRICS (Now natively powered by TTM backend totals!) ---
 const currentJoyAverage = computed(() => {
-  const score = bloomStore.joyStats?.score;
-  return typeof score === 'number' ? score.toFixed(2) : "0.00"
+  const score = ttmTrendData.value?.totals?.joyScore || 0;
+  return score.toFixed(2);
 })
 
 const currentVolumeTotal = computed(() => {
-  const count = bloomStore.joyStats?.metrics?.reviewsAnalyzed || 0
-  return new Intl.NumberFormat('en-US').format(count)
+  const count = ttmTrendData.value?.totals?.volume || 0;
+  return new Intl.NumberFormat('en-US').format(count);
 })
 
 const currentIssuesTotal = computed(() => {
-  return new Intl.NumberFormat('en-US').format(bloomStore.allIssues?.length || 0)
+  const count = ttmTrendData.value?.totals?.issues || 0;
+  return new Intl.NumberFormat('en-US').format(count);
 })
 
 // Dynamic Delta from Backend
@@ -134,7 +135,9 @@ const chartData = computed(() => {
 
     if (!buckets[key]) {
       buckets[key] = { 
-        volume: 0, actionableCount: 0, generalCount: 0, 
+        volume: 0, 
+        actionableSet: new Set(), // Use Sets to deduplicate
+        generalSet: new Set(),    // Use Sets to deduplicate
         metrics: { joy: 0, confidence: 0, engagement: 0, frustration: 0, hopelessness: 0 }, 
         totalExpressions: 0, 
         timestamp: new Date(day.date + 'T00:00:00Z').getTime() 
@@ -143,9 +146,11 @@ const chartData = computed(() => {
 
     const b = buckets[key]
     b.volume += day.volume
-    b.actionableCount += day.actionableCount // Note: Unique tracking over time requires sets if perfect deduplication across days is needed, but summing daily distincts is standard for trend velocity.
-    b.generalCount += day.generalCount
     b.totalExpressions += day.totalExpressions
+    
+    // Add IDs to the Set (duplicates across days are automatically ignored)
+    if (day.actionableIds) day.actionableIds.forEach(id => b.actionableSet.add(id))
+    if (day.generalIds) day.generalIds.forEach(id => b.generalSet.add(id))
 
     if (day.metrics) {
       b.metrics.joy += day.metrics.joy || 0
@@ -173,8 +178,9 @@ const chartData = computed(() => {
     xAxis.push(key)
     volumeSeries.push(b.volume)
 
-    actionableSeries.push({ value: b.actionableCount, volume: b.volume })
-    generalSeries.push({ value: b.generalCount, volume: b.volume })
+    // Extract the mathematically correct size of the Set
+    actionableSeries.push({ value: b.actionableSet.size, volume: b.volume })
+    generalSeries.push({ value: b.generalSet.size, volume: b.volume })
 
     if (b.totalExpressions === 0) {
       joySeries.push({ value: 0, volume: b.volume, metrics: null, total: 0, avgVolume })

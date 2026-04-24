@@ -119,60 +119,66 @@ const dimConfig = {
 const selectedDimension = computed(() => selectedDimensionId.value ? dimConfig[selectedDimensionId.value] : null)
 const getEmojiForMetric = (metric) => dimConfig[metric]?.emoji || '😶'
 
-// 🔥 FIX 2: Data-Driven Temporal Anchor
-// Scans the active dataset to find the absolute latest interaction, anchoring "Now" to the end of the period.
+// 🔥 FIX 1: Unify the Anchor Date
+// Using the TTM payload's anchorDate ensures the sparklines and verbatim texts perfectly align 
+// to the literal end of the selected period.
 const anchorMs = computed(() => {
-  let max = 0
-  const issues = bloomStore.allIssues || []
-  for (const issue of issues) {
-    if (!issue.interactions) continue
-    for (const int of issue.interactions) {
-      const t = new Date(int.updatedAtSource || int.createdAt).getTime()
-      if (t > max) max = t
-    }
+  if (bloomStore.ttmTrendData?.metadata?.anchorDate) {
+    return new Date(bloomStore.ttmTrendData.metadata.anchorDate).getTime()
   }
-  return max > 0 ? Math.min(Date.now(), max) : Date.now()
+  return Date.now()
 })
 
-// 2. Process Pinia Data into Daily 28-Day Series
+// 🔥 FIX 2: TTM Piggybacking (No new endpoints!)
 const processedDimensions = computed(() => {
-  const issues = bloomStore.allIssues || []
   const results = JSON.parse(JSON.stringify(dimConfig))
-  
   Object.values(results).forEach(dim => {
-    dim.history = new Array(28).fill(0)
+    dim.history = []
     dim.totalCount = 0
   })
 
-  // 🔥 Swapped Date.now() for our new temporal anchor
-  const now = anchorMs.value
-  const dayInMs = 24 * 60 * 60 * 1000
-  let totalInteractionsProcessed = 0
-
-  issues.forEach(issue => {
-    if (!issue.interactions) return
-    issue.interactions.forEach(interaction => {
-      if (!interaction.analysis?.joy) return
-
-      const timestamp = new Date(interaction.updatedAtSource || interaction.createdAt).getTime()
-      const daysAgo = Math.floor((now - timestamp) / dayInMs)
-
-      if (daysAgo >= 0 && daysAgo < 28) {
-        const bucketIndex = 27 - daysAgo 
-        interaction.analysis.joy.forEach(j => {
-          if (results[j.metric]) {
-            results[j.metric].history[bucketIndex] += 1
-            results[j.metric].totalCount += 1
-            totalInteractionsProcessed += 1
-          }
-        })
-      }
+  const trendData = bloomStore.ttmTrendData
+  
+  // Graceful fallback if TTM data hasn't loaded yet
+  if (!trendData || !trendData.dailyBuckets) {
+    return dimOrder.map(metricId => {
+      const dim = results[metricId]
+      dim.history = new Array(28).fill(1)
+      dim.value = 0
+      return dim
     })
-  })
+  }
+
+  // 1. Convert sparse backend array into a fast O(1) dictionary lookup
+  const bucketMap = {}
+  trendData.dailyBuckets.forEach(b => { bucketMap[b.date] = b })
+
+  // 2. Generate exactly 28 trailing days based on the absolute period boundary
+  let totalExpressionsProcessed = 0
+  const anchorDateObj = new Date(anchorMs.value)
+
+  // Loop backwards 27 days to 0 days ago
+  for (let i = 27; i >= 0; i--) {
+    const d = new Date(anchorDateObj)
+    d.setUTCDate(d.getUTCDate() - i)
+    const dateKey = d.toISOString().split('T')[0] // 'YYYY-MM-DD'
+
+    // Lookup data for this calendar day
+    const dayData = bucketMap[dateKey]
+
+    dimOrder.forEach(metricId => {
+      const val = dayData?.metrics ? (dayData.metrics[metricId] || 0) : 0
+      results[metricId].history.push(val)
+      results[metricId].totalCount += val
+      totalExpressionsProcessed += val
+    })
+  }
 
   return dimOrder.map(metricId => {
     const dim = results[metricId]
-    dim.value = totalInteractionsProcessed === 0 ? 0 : Math.round((dim.totalCount / totalInteractionsProcessed) * 100)
+    dim.value = totalExpressionsProcessed === 0 ? 0 : Math.round((dim.totalCount / totalExpressionsProcessed) * 100)
+    
+    // Fallback flatline if zero data
     if (dim.totalCount === 0) dim.history = new Array(28).fill(1)
     return dim
   })
@@ -216,12 +222,12 @@ const smartHighlight = (rawText, joyArray, targetMetric) => {
   return result
 }
 
+// 4. Verbatim Feed: Still strictly sources exact issue text from current period, bounded by anchor
 const verbatimFeed = computed(() => {
   let examples = []
   const seenIds = new Set() 
   const issues = bloomStore.allIssues || []
   
-  // 🔥 Swapped Date.now() for our new temporal anchor
   const now = anchorMs.value
   const dayInMs = 24 * 60 * 60 * 1000
 
@@ -267,7 +273,7 @@ const getSparklineOption = (dim) => {
       type: 'category', 
       boundaryGap: false,
       axisLine: { show: true, lineStyle: { color: '#e2e8f0' } }, 
-      axisLabel: { showMinLabel: true, showMaxLabel: true, color: '#94a3b8', fontSize: 9, margin: 4, formatter: (value, index) => index === 0 ? '-28d' : (index === 27 ? 'End' : '') }, // 🔥 Updated label to "End"
+      axisLabel: { showMinLabel: true, showMaxLabel: true, color: '#94a3b8', fontSize: 9, margin: 4, formatter: (value, index) => index === 0 ? '-28d' : (index === 27 ? 'End' : '') }, 
       axisTick: { show: false }
     },
     yAxis: { type: 'value', show: false, min: 'dataMin', max: 'dataMax' },
@@ -292,7 +298,7 @@ const getSparklineOption = (dim) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 </script>
 

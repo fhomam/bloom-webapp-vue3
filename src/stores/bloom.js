@@ -66,6 +66,7 @@ export const useBloomStore = defineStore('bloom', () => {
     priorBacklogIssues: null, 
     priorGeneralInteractions: null 
   })
+  const ttmTrendData = ref(null)
 
   // --- GETTERS ---
   
@@ -175,7 +176,8 @@ export const useBloomStore = defineStore('bloom', () => {
         api.getBloomSourceInteractionStats(corePayload), 
         api.getBloomSourcesWithVersion(corePayload),
         api.getBloomPmiTimeline(corePayload),
-        fetchPriorExecutiveStats(bloomApiPayload) // handles its own assignment
+        fetchPriorExecutiveStats(bloomApiPayload), // handles its own assignment
+        fetchTtmTrendData(bloomApiPayload),
       ])
       
       currentBloom.value = bloomRes
@@ -256,7 +258,6 @@ export const useBloomStore = defineStore('bloom', () => {
       
       // Update ref with real data, maintaining reactivity
       priorExecutiveStats.value = result || { priorBacklogIssues: null, priorGeneralInteractions: null }
-      console.log(result);
       
     } catch (error) {
       console.error('Failed to fetch prior executive stats', error)
@@ -265,11 +266,23 @@ export const useBloomStore = defineStore('bloom', () => {
     }
   }
 
+  async function fetchTtmTrendData(payload) {
+    try {
+      // Assuming you wired this up in api.js as getBloomTtmTrend
+      const result = await api.getBloomTtmTrend(payload)
+      ttmTrendData.value = result || null
+    } catch (error) {
+      console.error('Failed to fetch TTM trend data', error)
+      ttmTrendData.value = null
+    }
+  }
+
   return { 
     currentBloom, offeringContext, themes, sourceInteractionStats, 
     sourcesWithVersion, isLoading, error, allIssues, joyStats, 
     taxoStats, getFilteredAndSortedIssues,loadReportData, 
     loadDashboardData, availableBloomsDirectory,loadAvailableBlooms,
-    pmiHistory, priorExecutiveStats, fetchPriorExecutiveStats
+    pmiHistory, priorExecutiveStats, fetchPriorExecutiveStats, ttmTrendData,
+    fetchTtmTrendData
   }
 })

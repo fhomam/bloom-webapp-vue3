@@ -7,7 +7,9 @@
         <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
           Trend Analysis
         </h3>
-        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Trailing 12 Months</span>
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+          Trailing {{ ttmTrendData?.metadata?.trailingMonthsConfig || 12 }} Months
+        </span>
         
         <div class="flex items-baseline gap-3">
           <span class="text-3xl font-extrabold text-slate-900 tracking-tight leading-none">
@@ -22,15 +24,12 @@
           ]">
             <svg v-if="currentDelta > 0" class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
             <svg v-else-if="currentDelta < 0" class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-            
             {{ Math.abs(currentDelta) }}% vs prior TTM
           </div>
-
         </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-2 sm:gap-4">
-        
         <div class="flex p-1 bg-slate-100 rounded-lg">
           <button 
             v-for="metric in [{ id: 'joy', label: 'Joy Score' }, { id: 'volume', label: 'Volume' }, { id: 'issues', label: 'Packets' }]"
@@ -52,7 +51,6 @@
             {{ tf }}
           </button>
         </div>
-
       </div>
     </div>
 
@@ -76,10 +74,19 @@ use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, MarkL
 
 const bloomStore = useBloomStore()
 
+// System Constants matching Backend
+const JOY_FACTOR = 3;
+const CONFIDENCE_FACTOR = 2;
+const ENGAGEMENT_FACTOR = 1;
+const FRUSTRATION_FACTOR = -1;
+const HOPELESSNESS_FACTOR = -3;
+
 const activeMetric = ref('joy') 
 const activeTimeframe = ref('weeks') 
 
-// --- TOPLINE METRICS ---
+const ttmTrendData = computed(() => bloomStore.ttmTrendData)
+
+// --- TOPLINE METRICS (Now using the new payload!) ---
 const currentJoyAverage = computed(() => {
   const score = bloomStore.joyStats?.score;
   return typeof score === 'number' ? score.toFixed(2) : "0.00"
@@ -94,80 +101,61 @@ const currentIssuesTotal = computed(() => {
   return new Intl.NumberFormat('en-US').format(bloomStore.allIssues?.length || 0)
 })
 
-// 🔥 FIX: Delta Scaffolding
-// This watches the active tab and provides the correct delta for the selected metric.
-// If the data is null, the pill gracefully hides itself.
+// Dynamic Delta from Backend
 const currentDelta = computed(() => {
-  // TODO: Replace with real Prior TTM math when the backend endpoint is wired up
-  if (activeMetric.value === 'joy') return 5;     // Mock: +5%
-  if (activeMetric.value === 'volume') return -12; // Mock: -12%
-  if (activeMetric.value === 'issues') return null; // Mock: Hide Pill (No prior data)
+  if (!ttmTrendData.value?.deltas) return null;
+  if (activeMetric.value === 'joy') return ttmTrendData.value.deltas.joyScore;
+  if (activeMetric.value === 'volume') return ttmTrendData.value.deltas.volume;
+  if (activeMetric.value === 'issues') return ttmTrendData.value.deltas.issues;
   return null;
 })
 
-const JOY_FACTORS = { joy: 3, confidence: 2, engagement: 1, frustration: -1.5, hopelessness: -3 }
-
-// --- DATA ENGINE: Stacked Bucketing ---
+// --- DATA ENGINE: Fast Rollup ---
 const chartData = computed(() => {
-  const issues = bloomStore.allIssues || []
+  const dailyBuckets = ttmTrendData.value?.dailyBuckets || []
   const buckets = {}
 
-  const getBucketKey = (dateObj) => {
-    if (activeTimeframe.value === 'days') return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  // Helper to align dates into visual buckets
+  const getBucketKey = (dateStr) => {
+    // Treat the date string as UTC to prevent timezone shifting
+    const d = new Date(dateStr + 'T00:00:00Z') 
+    if (activeTimeframe.value === 'days') return d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
     if (activeTimeframe.value === 'weeks') {
-      const day = dateObj.getDay() || 7
-      dateObj.setHours(-24 * (day - 1))
-      return 'Week of ' + dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const day = d.getUTCDay() || 7
+      d.setUTCHours(-24 * (day - 1)) // Roll back to Monday
+      return 'Week of ' + d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
     }
-    return dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    return d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', year: 'numeric' })
   }
 
-  const initBucket = (key, timestamp) => {
-    buckets[key] = { 
-      volume: 0, 
-      actionableMap: {}, // For Backlog Candidates
-      generalMap: {},    // For Contextual/General items
-      joyMetrics: { joy: 0, confidence: 0, engagement: 0, frustration: 0, hopelessness: 0 }, 
-      timestamp 
+  // 1. Roll up the daily buckets into the selected timeframe
+  dailyBuckets.forEach(day => {
+    const key = getBucketKey(day.date)
+
+    if (!buckets[key]) {
+      buckets[key] = { 
+        volume: 0, actionableCount: 0, generalCount: 0, 
+        metrics: { joy: 0, confidence: 0, engagement: 0, frustration: 0, hopelessness: 0 }, 
+        totalExpressions: 0, 
+        timestamp: new Date(day.date + 'T00:00:00Z').getTime() 
+      }
     }
-  }
 
-  // 1. Group interactions and split issues into correct map
-  issues.forEach(issue => {
-    if (!issue.interactions) return
+    const b = buckets[key]
+    b.volume += day.volume
+    b.actionableCount += day.actionableCount // Note: Unique tracking over time requires sets if perfect deduplication across days is needed, but summing daily distincts is standard for trend velocity.
+    b.generalCount += day.generalCount
+    b.totalExpressions += day.totalExpressions
 
-    const isActionable = issue.class === 'backlog-candidate' || (!issue.class && !issue.taxo?.includes('non_issue'))
-
-    issue.interactions.forEach(interaction => {
-      const dateStr = interaction.updatedAtSource || interaction.createdAt
-      if (!dateStr) return
-      
-      const dateObj = new Date(dateStr)
-      const intKey = getBucketKey(new Date(dateObj.getTime()))
-
-      if (!buckets[intKey]) initBucket(intKey, dateObj.getTime())
-
-      const b = buckets[intKey]
-      b.volume += 1
-
-      // Track issue participation in the correct stack
-      if (isActionable) {
-        if (!b.actionableMap[issue.id]) b.actionableMap[issue.id] = { title: issue.title || issue.taxo, count: 0 }
-        b.actionableMap[issue.id].count += 1
-      } else {
-        if (!b.generalMap[issue.id]) b.generalMap[issue.id] = { title: issue.title || issue.taxo, count: 0 }
-        b.generalMap[issue.id].count += 1
-      }
-
-      if (interaction.analysis && interaction.analysis.joy) {
-        interaction.analysis.joy.forEach(j => {
-          if (b.joyMetrics[j.metric] !== undefined) b.joyMetrics[j.metric] += 1
-        })
-      }
-    })
+    if (day.metrics) {
+      b.metrics.joy += day.metrics.joy || 0
+      b.metrics.confidence += day.metrics.confidence || 0
+      b.metrics.engagement += day.metrics.engagement || 0
+      b.metrics.frustration += day.metrics.frustration || 0
+      b.metrics.hopelessness += day.metrics.hopelessness || 0
+    }
   })
 
-  // 2. Sort chronologically
   const sortedKeys = Object.keys(buckets).sort((a, b) => buckets[a].timestamp - buckets[b].timestamp)
 
   const xAxis = []
@@ -179,43 +167,30 @@ const chartData = computed(() => {
   const totalVolume = sortedKeys.reduce((sum, key) => sum + buckets[key].volume, 0)
   const avgVolume = sortedKeys.length ? Math.round(totalVolume / sortedKeys.length) : 0
 
-  // 3. Extract ECharts Arrays
+  // 2. Extract ECharts Arrays
   sortedKeys.forEach(key => {
     const b = buckets[key]
     xAxis.push(key)
     volumeSeries.push(b.volume)
 
-    // Parse the two stacks
-    const activeActionable = Object.values(b.actionableMap)
-    const activeGeneral = Object.values(b.generalMap)
-    
-    actionableSeries.push({ 
-      value: activeActionable.length, 
-      volume: b.volume,
-      topDrivers: activeActionable.sort((a, b) => b.count - a.count).slice(0, 3)
-    })
-    
-    generalSeries.push({ 
-      value: activeGeneral.length,
-      volume: b.volume
-    })
+    actionableSeries.push({ value: b.actionableCount, volume: b.volume })
+    generalSeries.push({ value: b.generalCount, volume: b.volume })
 
-    const totalExpressions = Object.values(b.joyMetrics).reduce((sum, val) => sum + val, 0)
-    if (totalExpressions === 0) {
+    if (b.totalExpressions === 0) {
       joySeries.push({ value: 0, volume: b.volume, metrics: null, total: 0, avgVolume })
     } else {
       const score = 
-        ((b.joyMetrics.joy / totalExpressions) * JOY_FACTORS.joy) +
-        ((b.joyMetrics.confidence / totalExpressions) * JOY_FACTORS.confidence) +
-        ((b.joyMetrics.engagement / totalExpressions) * JOY_FACTORS.engagement) +
-        ((b.joyMetrics.frustration / totalExpressions) * JOY_FACTORS.frustration) +
-        ((b.joyMetrics.hopelessness / totalExpressions) * JOY_FACTORS.hopelessness)
+        ((b.metrics.joy / b.totalExpressions) * JOY_FACTOR) +
+        ((b.metrics.confidence / b.totalExpressions) * CONFIDENCE_FACTOR) +
+        ((b.metrics.engagement / b.totalExpressions) * ENGAGEMENT_FACTOR) +
+        ((b.metrics.frustration / b.totalExpressions) * FRUSTRATION_FACTOR) +
+        ((b.metrics.hopelessness / b.totalExpressions) * HOPELESSNESS_FACTOR)
       
       joySeries.push({
         value: parseFloat(score.toFixed(2)),
         volume: b.volume,
-        metrics: b.joyMetrics,
-        total: totalExpressions,
+        metrics: b.metrics,
+        total: b.totalExpressions,
         avgVolume: avgVolume
       })
     }
@@ -224,7 +199,7 @@ const chartData = computed(() => {
   return { xAxis, volumeSeries, actionableSeries, generalSeries, joySeries }
 })
 
-// --- REACTIVE ECHARTS CONFIGURATION ---
+// --- ECHARTS CONFIGURATION ---
 const chartOption = computed(() => {
   const isJoy = activeMetric.value === 'joy'
   const isVolume = activeMetric.value === 'volume'
@@ -258,15 +233,14 @@ const chartOption = computed(() => {
       itemStyle: { color: '#cbd5e1', borderRadius: [4, 4, 0, 0] }
     }]
   } else if (isIssues) {
-    // STACKED BAR CONFIGURATION
     seriesArray = [
       {
         name: 'Backlog Candidates',
         data: data.actionableSeries,
         type: 'bar',
-        stack: 'total-issues', // Explicitly grouping them together
+        stack: 'total-issues',
         barMaxWidth: 40,
-        itemStyle: { color: '#6366f1' } // Indigo base
+        itemStyle: { color: '#6366f1' } 
       },
       {
         name: 'General Clusters',
@@ -280,31 +254,13 @@ const chartOption = computed(() => {
   }
 
   return {
-    grid: { 
-      top: isIssues ? 35 : 10, 
-      right: 10, 
-      bottom: 24, 
-      left: 45, 
-      outerBoundsMode: 'same', 
-      outerBoundsContain: 'axisLabel' 
-    },
-    legend: {
-      show: isIssues, 
-      top: 0,
-      right: 10,
-      icon: 'circle',
-      textStyle: { fontSize: 11, color: '#64748b' }
-    },
+    grid: { top: isIssues ? 35 : 10, right: 10, bottom: 24, left: 45, outerBoundsMode: 'same', outerBoundsContain: 'axisLabel' },
+    legend: { show: isIssues, top: 0, right: 10, icon: 'circle', textStyle: { fontSize: 11, color: '#64748b' } },
     tooltip: {
       trigger: 'axis',
       position: function (point, params, dom, rect, size) {
-        let x = point[0] + 15;
-        let y = point[1] + 15;
-        // If it bleeds off the right edge, flip it to the left side of the cursor
-        if (x + size.contentSize[0] > size.viewSize[0]) {
-          x = point[0] - size.contentSize[0] - 15;
-        }
-        // If it bleeds off the left edge (or on super small screens), pin it to the left
+        let x = point[0] + 15; let y = point[1] + 15;
+        if (x + size.contentSize[0] > size.viewSize[0]) x = point[0] - size.contentSize[0] - 15;
         if (x < 10) x = 10;
         return [x, y];
       },
@@ -361,16 +317,12 @@ const chartOption = computed(() => {
               <span class="text-xl font-black leading-none text-slate-900">${new Intl.NumberFormat('en-US').format(pointData)}</span>
             </div>`
         } else if (isIssues) {
-          // params contains an array of the two stacked bar objects
           const actionableData = params.find(p => p.seriesName === 'Backlog Candidates')?.data
           const generalData = params.find(p => p.seriesName === 'General Clusters')?.data
           
           const actionableVal = actionableData?.value || 0
           const generalVal = generalData?.value || 0
           const totalVal = actionableVal + generalVal
-
-          // Fallback to the volume recorded in the actionable object (both have the same total volume)
-          const bucketVolume = actionableData?.volume || generalData?.volume || 0
 
           html += `
             <div class="flex items-end justify-between mb-1">
@@ -381,18 +333,7 @@ const chartOption = computed(() => {
               <div class="flex justify-between"><span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-indigo-500"></div>Backlog Candidates</span> <span class="text-slate-900 font-bold">${actionableVal}</span></div>
               <div class="flex justify-between"><span class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-slate-300"></div>General Clusters</span> <span class="text-slate-900 font-bold">${generalVal}</span></div>
             </div>`
-
-          if (actionableData && actionableData.topDrivers && actionableData.topDrivers.length > 0) {
-            html += `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 mt-1">Actionable Drivers</div>`
-            actionableData.topDrivers.forEach(td => {
-               html += `
-                 <div class="flex items-center justify-between gap-3 mb-1.5">
-                   <span class="text-[11px] text-slate-600 truncate max-w-[160px] font-medium" title="${td.title}">${td.title}</span>
-                   <span class="text-[10px] font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">${td.count}</span>
-                 </div>
-               `
-            })
-          }
+            // Note: topDrivers logic removed since backend grouping prevents granular issue mapping locally
         }
 
         html += `</div></div>`

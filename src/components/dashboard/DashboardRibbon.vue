@@ -1,9 +1,11 @@
 <template>
-  <div class="bg-white rounded-2xl border border-slate-200 p-4 min-[480px]:p-5 lg:p-6 shadow-sm grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-[auto_1fr_auto] gap-y-4 min-[480px]:gap-y-5 gap-x-4 lg:gap-x-8 items-center relative z-10 w-full">
+  <div class="bg-white rounded-2xl border border-slate-200 p-4 min-[480px]:p-5 lg:p-6 shadow-sm grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-[1fr_auto_1fr] gap-y-4 min-[480px]:gap-y-5 gap-x-4 lg:gap-x-8 items-center relative z-10 w-full">
     
-    <DashboardRibbonJoyScore />
+    <div class="row-start-2 md:row-start-1 md:col-start-1 justify-self-center min-[480px]:justify-self-start w-full">
+      <DashboardRibbonJoyScore />
+    </div>
 
-    <div class="col-span-1 min-[480px]:col-span-2 md:col-span-1 row-start-1 md:row-start-1 flex flex-col items-center justify-center text-center min-w-0 w-full px-1 min-[480px]:px-2">
+    <div class="row-start-1 min-[480px]:col-span-2 md:col-span-1 md:row-start-1 md:col-start-2 flex flex-col items-center justify-center text-center min-w-0 w-full px-1 min-[480px]:px-2">
       <span class="text-[9px] lg:text-[10px] font-extrabold text-bloom-primary uppercase tracking-[0.2em] mb-1.5">
         Executive Dashboard
       </span>
@@ -19,7 +21,9 @@
       </div>
     </div>
 
-    <DashboardRibbonPmi />
+    <div class="row-start-3 min-[480px]:row-start-2 md:row-start-1 md:col-start-3 justify-self-center min-[480px]:justify-self-end flex md:justify-end w-full">
+      <DashboardRibbonPmi />
+    </div>
 
   </div>
 </template>

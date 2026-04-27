@@ -80,7 +80,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
-import IssueCardStats from './IssueCardStats.vue'
+import IssueCardStats from '@components/bloom/IssueCardStats.vue'
 
 const ui = useUiStore()
 

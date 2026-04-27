@@ -111,7 +111,7 @@
         </button>
       </div>
 
-      <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto sm:ml-auto gap-3">
+      <div class="flex items-center justify-start sm:justify-end w-full sm:w-auto sm:ml-auto gap-3">
         <Dropdown v-model="activeSource" :options="sourceOptions" variant="boxed" />
         <Dropdown v-if="activeSource !== 'all'" v-model="activeSecondary" :options="secondaryOptions" variant="boxed" />
       </div>

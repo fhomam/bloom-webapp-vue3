@@ -14,9 +14,9 @@
         {{ offeringTitle }}
       </h2>
       
-      <div class="flex flex-wrap items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-lg py-1 lg:py-1.5 px-2 lg:px-3 w-fit">
+      <div class="flex flex-nowrap shrink-0 items-center justify-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg py-1 lg:py-1.5 px-2 lg:px-3 w-max mx-auto">
         <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" />
-        <span class="text-slate-300 font-light text-xs">/</span>
+        <span class="text-slate-300 font-light text-xs shrink-0">/</span>
         <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="uppercase" />
       </div>
     </div>

@@ -1,10 +1,10 @@
 <template>
   <div 
-    class="flex flex-col gap-1 cursor-pointer group rounded-xl max-w-fit mx-auto min-[480px]:mx-0 w-full"
+    class="flex flex-col gap-1 cursor-pointer group rounded-xl max-w-fit mx-auto min-[480px]:mx-0 w-full md:w-auto"
     @click="uiState.showJoyDimensions = !uiState.showJoyDimensions"
   >
     <div class="flex items-end justify-center min-[480px]:justify-start gap-2 lg:gap-3 relative">
-      <span class="text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tighter leading-none">
+      <span class="text-4xl md:text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tighter leading-none transition-all">
         {{ joyScore }}
       </span>
       <div class="flex flex-col pb-0.5 lg:pb-1">
@@ -38,13 +38,13 @@
           </div>
         </div>
 
-        <span class="text-[9px] lg:text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
+        <span class="text-[9px] lg:text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 whitespace-nowrap">
           {{ joyLabel }}
         </span>
       </div>
     </div>
     
-    <div class="flex h-[44px] w-full min-w-[200px] md:min-w-[240px] flex-col justify-center mt-1">
+    <div class="flex h-[44px] w-full min-w-[180px] lg:min-w-[240px] shrink-0 flex-col justify-center mt-1">
       
       <div v-if="!uiState.showJoyDimensions" class="text-[11px] lg:text-xs font-medium text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-3 text-left">
         Encompasses <strong>{{ formattedInteractions }}</strong> interactions<br />
@@ -92,7 +92,6 @@
 </template>
 
 <script setup>
-// [Script remains exactly unchanged from your provided version]
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'

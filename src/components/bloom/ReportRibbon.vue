@@ -3,122 +3,119 @@
     
     <div class="hidden md:flex px-6 lg:px-10 py-6 flex-row items-center justify-between gap-6">
       
-      <div class="flex items-start gap-4 w-1/3 justify-start shrink-0">
-        <span class="text-4xl mt-1">🎉</span>
-        <div class="flex flex-col">
-          <span class="text-3xl lg:text-4xl font-black text-slate-900 leading-none tracking-tighter">{{ safeJoyScore }}</span>
-          <span class="text-[11px] lg:text-xs font-semibold text-slate-500 uppercase tracking-wide mt-1.5 leading-tight">
-            {{ bloomStore.joyStats?.scoreDescription || 'Mostly Frustrated' }}
-          </span>
-          
-          <div class="flex items-center gap-1 mt-2 text-[12.5px] font-medium text-slate-500">
-            <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" class="text-slate-600 font-bold" />
-            <span class="text-slate-300">/</span>
-            <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="text-slate-800 font-bold" />
+      <div class="flex flex-col items-start gap-4 w-1/3 justify-start shrink-0 min-w-[200px]">
+        <div class="flex items-start gap-3">
+          <span class="text-4xl mt-1">{{ getEmoji(bloomStore.joyStats?.scoreDescription || 'Joyful') }}</span>
+          <div class="flex flex-col">
+            <span class="text-3xl lg:text-4xl font-black text-slate-900 leading-none tracking-tighter">{{ safeJoyScore }}</span>
+            <span class="text-[11px] lg:text-xs font-semibold text-slate-500 uppercase tracking-wide mt-1.5 leading-tight">
+              {{ bloomStore.joyStats?.scoreDescription || 'Loading...' }}
+            </span>
+          </div>
+        </div>
+        
+        <div class="flex flex-col gap-1.5 text-[12px] font-medium text-slate-500">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-slate-600 font-semibold">{{ developerName }}</span>
+            <span class="text-slate-300">•</span>
+            <span class="flex items-center gap-1"><span class="text-amber-400 text-[14px] leading-none">★</span> <b class="text-slate-700">{{ safeRatingScore }}</b> ({{ safeRatingCount }})</span>
           </div>
         </div>
       </div>
 
-      <div class="flex flex-col items-center justify-center w-1/3 text-center">
-        <h1 class="text-2xl lg:text-[25px] font-bold text-slate-900 tracking-tight leading-none">{{ appName }}</h1>
+      <div class="flex flex-col items-center justify-center w-1/3 text-center min-w-0 shrink">
+        <span class="text-[9px] lg:text-[10px] font-extrabold text-bloom-primary uppercase tracking-[0.2em] mb-1.5">
+          Taxonomy Explorer
+        </span>
+        <h1 class="text-xl lg:text-[24px] font-bold text-slate-900 tracking-tight leading-tight break-words w-full px-2">{{ appName }}</h1>
         <div class="mt-2.5">
           <Dropdown v-model="activeClass" :options="classOptions" variant="minimal" />
         </div>
+        <div class="flex flex-nowrap shrink-0 items-center justify-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg py-1 lg:py-1.5 px-2 lg:px-3 w-max mt-3">
+          <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" class="text-slate-600 font-bold" />
+          <span class="text-slate-300 font-light text-xs shrink-0">/</span>
+          <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="text-slate-800 font-bold uppercase" />
+        </div>
       </div>
 
-      <div class="flex flex-col items-end justify-center w-1/3 shrink-0 gap-3">
-        <div class="flex items-center justify-end gap-3 lg:gap-5">
+      <div class="flex flex-col items-end justify-center w-1/3 shrink-0 min-w-0">
+        <div class="flex flex-nowrap items-center justify-end gap-2 lg:gap-3 xl:gap-5 w-full">
           <button 
             v-for="m in ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']" 
             :key="m" 
             @click="openEmotionExplorer(m)"
-            class="flex flex-col items-center w-10 group cursor-pointer"
+            class="flex flex-col items-center w-8 lg:w-10 group cursor-pointer shrink-0"
           >
-            <span class="text-[24px] leading-none group-hover:scale-110 transition-transform">{{ getEmoji(m) }}</span>
-            <span class="text-[13px] font-medium text-slate-600 mt-2 group-hover:text-bloom-primary transition-colors">{{ getJoyPercent(m) }}</span>
+            <span class="text-[20px] lg:text-[24px] leading-none group-hover:scale-110 transition-transform">{{ getEmoji(m) }}</span>
+            <span class="text-[11px] lg:text-[13px] font-medium text-slate-600 mt-1.5 lg:mt-2 group-hover:text-bloom-primary transition-colors">{{ getJoyPercent(m) }}</span>
           </button>
         </div>
-        <div class="text-[11.5px] font-medium text-slate-400 pr-1">
-          Based on {{ safeReviewsAnalyzed }} interactions
+        <div class="text-[11px] text-slate-400 mt-2.5 pr-1 text-right w-full">
+          Based on <b class="text-slate-500">{{ safeReviewsAnalyzed }}</b> interactions
+        </div>
+      </div>
+
+    </div>
+
+    <div class="hidden sm:flex md:hidden flex-row items-start justify-between gap-6 px-6 py-5">
+      <div class="flex flex-col items-start text-left min-w-0 w-[55%]">
+        <h1 class="text-[22px] font-bold text-slate-900 tracking-tight leading-tight break-words w-full">{{ appName }}</h1>
+        <div class="mt-1.5">
+          <Dropdown v-model="activeClass" :options="classOptions" variant="minimal" />
+        </div>
+        <div class="flex items-center justify-start gap-1 mt-3 bg-slate-50 border border-slate-200 rounded py-1.5 px-2 w-max">
+          <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" class="text-[12px] text-slate-600 font-bold" />
+          <span class="text-slate-300">/</span>
+          <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="text-[12px] text-slate-800 font-bold uppercase" />
+        </div>
+      </div>
+
+      <div class="flex flex-col items-end text-right shrink-0 w-[45%]">
+        <div class="flex flex-col items-end mb-3">
+          <span class="text-2xl font-black text-slate-900 leading-none tracking-tighter">{{ safeJoyScore }}</span>
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">{{ bloomStore.joyStats?.scoreDescription || 'Loading...' }}</span>
+        </div>
+        <div class="flex items-center gap-2 text-[12px] font-medium text-slate-500 flex-wrap justify-end">
+          <span class="text-slate-700">{{ developerName }}</span>
+          <span class="text-slate-300 hidden min-[600px]:inline">•</span>
+          <span class="flex items-center gap-1"><span class="text-amber-400">★</span> <b>{{ safeRatingScore }}</b> <span class="text-[10px]">({{ safeRatingCount }})</span></span>
         </div>
       </div>
     </div>
 
-    <div class="hidden sm:flex md:hidden flex-col gap-5 px-6 py-5">
-      <div class="flex items-start justify-between gap-4">
-        <div class="flex flex-col items-start text-left min-w-0">
-          <h1 class="text-[22px] font-bold text-slate-900 tracking-tight leading-none truncate w-full">{{ appName }}</h1>
-          <div class="mt-1.5">
-            <Dropdown v-model="activeClass" :options="classOptions" variant="minimal" />
-          </div>
-        </div>
-        <div class="flex items-start justify-end shrink-0">
-          <div class="flex flex-col items-end text-right">
-            <div class="flex items-center gap-2">
-              <span class="text-3xl">🎉</span>
-              <span class="text-3xl font-black text-slate-900 leading-none tracking-tighter">{{ safeJoyScore }}</span>
-            </div>
-            <div class="flex items-center justify-end gap-1 mt-1.5 text-[12px] font-medium text-slate-500">
-              <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" class="text-slate-600 font-bold" />
-              <span class="text-slate-300">/</span>
-              <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="text-slate-800 font-bold" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="flex sm:hidden flex-col px-6 py-5 bg-white">
+    <div class="flex sm:hidden flex-col px-5 py-4 bg-white">
       <div class="flex flex-col items-center text-center min-w-0">
-        <h1 class="font-bold text-slate-900 text-[19px] leading-tight truncate w-full">{{ appName }}</h1>
+        <h1 class="font-bold text-slate-900 text-[19px] leading-tight break-words w-full">{{ appName }}</h1>
         <div class="mt-1">
           <Dropdown v-model="activeClass" :options="classOptions" variant="minimal" class="text-[14.5px]" />
         </div>
-      </div>
-      <div class="flex items-center justify-between mt-4 pt-3.5 border-t border-slate-100">
-        <div class="flex flex-col gap-1 text-[13px] font-medium text-slate-500">
-          <div class="flex items-center gap-1">
-            <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" class="text-slate-600 font-bold" />
-            <span class="text-slate-300">/</span>
-            <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="text-slate-800 font-bold" />
-          </div>
-          <span class="text-[11.5px] text-slate-400 truncate">Based on {{ safeReviewsAnalyzed }} interactions</span>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0 self-start mt-1">
-          <span class="text-[22px]">🎉</span>
-          <span class="text-[20px] font-black text-slate-900 tracking-tighter">{{ safeJoyScore }}</span>
+        <div class="flex items-center justify-center gap-1 mt-2.5 bg-slate-50 border border-slate-200 rounded py-1 px-2 w-max mx-auto">
+          <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" class="text-[11px] text-slate-600 font-bold" />
+          <span class="text-slate-300">/</span>
+          <Dropdown v-model="activePeriodId" :options="periodIdOptions" variant="minimal" class="text-[11px] text-slate-800 font-bold uppercase" />
         </div>
       </div>
     </div>
 
-    <div class="px-6 lg:px-10 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/30 gap-4">
+    <div class="px-5 lg:px-10 py-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between bg-slate-50/30 gap-3 sm:gap-4">
       
-      <div class="hidden md:flex gap-6 text-[13px] font-medium text-slate-500">
-        <span class="truncate max-w-[200px]">{{ developerName }}</span>
-        <span class="flex items-center gap-1"><span class="text-amber-400">★</span> <b class="text-slate-700">{{ safeRatingScore }}</b> ({{ safeRatingCount }})</span>
-      </div>
-
-      <div class="hidden sm:flex md:hidden items-center gap-4 shrink-0">
+      <div class="hidden sm:flex md:hidden items-center gap-3 shrink-0">
         <button 
           v-for="m in ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']" 
           :key="m" 
           @click="openEmotionExplorer(m)"
-          class="flex flex-col items-center w-8 group cursor-pointer"
+          class="flex items-center gap-1 group cursor-pointer"
         >
-          <span class="text-[22px] leading-none group-hover:scale-110 transition-transform">{{ getEmoji(m) }}</span>
-          <span class="text-[13px] font-medium text-slate-600 mt-2 group-hover:text-bloom-primary transition-colors">{{ getJoyPercent(m) }}</span>
+          <span class="text-[18px] leading-none group-hover:scale-110 transition-transform">{{ getEmoji(m) }}</span>
+          <span class="text-[11px] font-bold text-slate-600 group-hover:text-bloom-primary transition-colors">{{ getJoyPercent(m) }}</span>
         </button>
-        <div class="h-8 w-px bg-slate-200 mx-1"></div>
-        <div class="text-[11px] font-medium text-slate-400 leading-tight">
-          Based on<br/><b class="text-slate-500">{{ safeReviewsAnalyzed }}</b> interactions
-        </div>
       </div>
-      
-      <div class="flex items-center justify-end w-full sm:w-auto sm:ml-auto gap-3">
+
+      <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto sm:ml-auto gap-3">
         <Dropdown v-model="activeSource" :options="sourceOptions" variant="boxed" />
-        
         <Dropdown v-if="activeSource !== 'all'" v-model="activeSecondary" :options="secondaryOptions" variant="boxed" />
       </div>
+      
     </div>
 
   </div>
@@ -230,7 +227,7 @@ const periodIdOptions = computed(() => {
   
   if (!blooms.length) {
     const fallback = route.params.periodId
-    return [{ id: fallback, label: fallback.toUpperCase() }]
+    return [{ id: fallback, label: (fallback || '').toUpperCase() }]
   }
 
   blooms.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -239,7 +236,18 @@ const periodIdOptions = computed(() => {
 
 
 // --- OTHER UTILITIES & SAFE DATA MAPPING ---
-const getEmoji = (m) => ({ joy:'✨', confidence:'😎', engagement:'👀', frustration:'😤', hopelessness:'😔' }[m])
+const getEmoji = (desc) => {
+  const map = {
+    "Mostly Hopeless": '😔', "Leaning Hopeless": '😔',
+    "Mostly Frustrated": '😤',
+    "Contentious": '🤔', "Inconclusive": '😶',
+    "Leaning Engaged": '👀', "Positively Engaged": '👀',
+    "Leaning Confident": '😎', "Confident": '😎',
+    "Joyful": '✨',
+    "joy": '✨', "confidence": '😎', "engagement": '👀', "frustration": '😤', "hopelessness": '😔'
+  }
+  return map[desc] || '😶'
+}
 const formatNumber = (num) => (num || 0).toLocaleString('en-US')
 
 const safeJoyScore = computed(() => {
@@ -343,11 +351,9 @@ const sourceOptions = computed(() => {
 const secondaryOptions = computed(() => {
   const baseOptions = [{ id: 'all', label: 'All', subLabel: activeSource.value === 'google_play' ? 'Languages' : 'Countries' }]
   
-  // 1. Grab the stats for the currently selected source from our NEW store variable
   const sourceStats = bloomStore.sourceInteractionStats?.[activeSource.value]
   if (!sourceStats) return baseOptions
 
-  // 2. Select the correct dimension dictionary based on the source
   let targetDimensionStats = {}
   if (activeSource.value === 'apple_app_store') {
     targetDimensionStats = sourceStats.country || {}
@@ -355,7 +361,6 @@ const secondaryOptions = computed(() => {
     targetDimensionStats = sourceStats.lang || {}
   }
 
-  // 3. Map the dictionary into dropdown options, filtering out placeholders
   const dynamicOptions = Object.entries(targetDimensionStats)
     .filter(([code]) => code !== 'global' && code !== 'default')
     .map(([code, count]) => ({

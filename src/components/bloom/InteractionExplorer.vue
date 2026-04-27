@@ -6,9 +6,10 @@
         <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
           Interaction Explorer
         </h2>
-        <div class="flex items-center gap-2">
-          <span v-if="exploreEmotion" class="text-xl leading-none">{{ getEmoji(exploreEmotion) }}</span>
-          <span class="text-[17px] font-bold text-slate-900 leading-tight truncate">
+        <div class="flex items-start gap-2">
+          <span v-if="exploreEmotion" class="text-xl leading-none">
+          {{ getEmoji(exploreEmotion) }}</span>
+          <span class="text-[15px] font-bold text-slate-900 leading-tight line-clamp-2">
             {{ contextTitle }}
           </span>
         </div>

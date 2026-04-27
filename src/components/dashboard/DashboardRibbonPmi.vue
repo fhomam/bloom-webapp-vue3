@@ -1,5 +1,5 @@
 <template>
-  <div class="col-span-1 min-[480px]:col-span-1 row-start-3 min-[480px]:row-start-2 md:row-start-1 flex flex-col xl:flex-row justify-center min-[480px]:justify-end items-center min-[480px]:items-end xl:items-center gap-1 xl:gap-5 border-t border-slate-100 min-[480px]:border-0 pt-4 min-[480px]:pt-0 mt-1 min-[480px]:mt-0">
+  <div class="col-span-1 min-[480px]:col-span-1 row-start-3 min-[480px]:row-start-2 md:row-start-1 flex flex-col xl:flex-row justify-center min-[480px]:justify-end items-center min-[480px]:items-end xl:items-center gap-1 xl:gap-5 border-t border-slate-100 min-[480px]:border-0 pt-4 min-[480px]:pt-0 mt-1 min-[480px]:mt-0 w-full">
       
     <div class="hidden md:flex flex-col items-end text-right order-2 xl:order-1 mt-1 xl:mt-0">
       <span class="text-[11px] xl:text-[15px] font-bold text-slate-600 xl:text-slate-900 leading-none">{{ companyMeta.name }}</span>
@@ -8,16 +8,16 @@
     
     <div class="h-10 w-px bg-slate-200 hidden xl:block order-2"></div> 
 
-    <div ref="pmiContainerRef" class="flex flex-col items-center min-[480px]:items-end justify-center pt-1 order-1 xl:order-3 relative">
+    <div ref="pmiContainerRef" class="flex flex-col items-center min-[480px]:items-end justify-center pt-1 order-1 xl:order-3 relative w-full min-[480px]:w-auto">
       
-      <div class="flex items-center gap-1 mb-0.5 justify-center min-[480px]:justify-end w-full">
+      <div class="flex items-center justify-center min-[480px]:justify-end gap-1 mb-0.5 w-full">
         <span class="text-[8px] lg:text-[9px] font-bold text-slate-400 uppercase tracking-wider">Quarterly</span>
         <button @click.stop="toggleMainDetails" class="text-slate-300 hover:text-slate-500 transition-colors cursor-pointer">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         </button>
       </div>
 
-      <div class="flex items-center gap-1.5 lg:gap-2">
+      <div class="flex items-center justify-center min-[480px]:justify-end gap-1.5 lg:gap-2 w-full">
         
         <div class="flex items-end gap-[2px] lg:gap-[3px] h-3.5 lg:h-5 mr-1">
           <div v-for="(q, idx) in pmiMetrics.bars" :key="idx" class="relative h-full flex items-end">
@@ -31,10 +31,8 @@
             <div v-if="uiState.activeBarIdx === idx" 
                  class="absolute bottom-full mb-3 z-50 w-44 bg-white border border-slate-200 shadow-xl rounded-xl p-3 animate-in fade-in zoom-in-95 duration-150"
                  :style="uiState.popupBoxStyle">
-              
               <div class="flex flex-col gap-0.5 text-left">
                 <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{{ q.period }}</span>
-                
                 <template v-if="q.status === 'valid'">
                   <div class="flex items-baseline gap-1 mt-0.5">
                     <span class="text-xl font-extrabold text-slate-900 leading-none">{{ q.pmi }}%</span>
@@ -44,18 +42,15 @@
                     Based on <strong>{{ formatNumber(q.interactionVolume) }}</strong> interactions
                   </span>
                 </template>
-                
                 <template v-else-if="q.status === 'insufficient_data'">
                   <span class="text-sm font-bold text-amber-600 mt-0.5 leading-tight">Pending Data</span>
                   <span class="text-[10px] text-slate-500 mt-1 leading-tight">{{ q.count }} / 100 required interactions</span>
                 </template>
-                
                 <template v-else>
                   <span class="text-sm font-bold text-slate-600 mt-0.5 leading-tight">Data Unavailable</span>
                   <span class="text-[10px] text-slate-500 mt-1 leading-tight">Requires AI analysis run</span>
                 </template>
               </div>
-
               <div class="absolute -bottom-1.5 w-3 h-3 bg-white border-b border-r border-slate-200 transform rotate-45"
                    :style="uiState.popupPointerStyle"></div>
             </div>
@@ -71,7 +66,7 @@
         </span>
       </div>
       
-      <span class="text-[8px] lg:text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1 text-center min-[480px]:text-right">
+      <span class="text-[8px] lg:text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1 text-center min-[480px]:text-right w-full">
         Product Market Impedance
       </span>
 
@@ -95,6 +90,7 @@
 </template>
 
 <script setup>
+// [Script remains exactly unchanged]
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useBloomStore } from '@/stores/bloom'
 
@@ -108,7 +104,6 @@ const uiState = reactive({
   popupPointerStyle: {}
 })
 
-// --- CLICK ORCHESTRATION & EDGE DETECTION ---
 const toggleMainDetails = () => {
   uiState.activeBarIdx = null
   uiState.showMainDetails = !uiState.showMainDetails
@@ -159,11 +154,9 @@ const companyMeta = computed(() => ({
   users: bloomStore.offeringContext?.installs ? formatCompact(bloomStore.offeringContext.installs) : 'Unknown'
 }))
 
-// --- NATIVE STORE INTEGRATION ---
 const pmiMetrics = computed(() => {
   const data = bloomStore.pmiHistory
   
-  // Safely fallback if data is missing or loading
   if (!data || data.length < 4) return { current: null, scoreDisplay: '--%', delta: null, bars: [] }
 
   const current = data[3]

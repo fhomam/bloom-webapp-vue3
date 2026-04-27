@@ -1,9 +1,9 @@
 <template>
   <div 
-    class="flex flex-col gap-1 cursor-pointer group rounded-xl max-w-fit mx-auto min-[480px]:mx-0"
+    class="flex flex-col gap-1 cursor-pointer group rounded-xl max-w-fit mx-auto min-[480px]:mx-0 w-full"
     @click="uiState.showJoyDimensions = !uiState.showJoyDimensions"
   >
-    <div class="flex items-end gap-2 lg:gap-3 relative">
+    <div class="flex items-end justify-center min-[480px]:justify-start gap-2 lg:gap-3 relative">
       <span class="text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tighter leading-none">
         {{ joyScore }}
       </span>
@@ -44,9 +44,9 @@
       </div>
     </div>
     
-    <div class="hidden md:flex min-h-[40px] min-w-[240px] flex-col justify-center mt-1">
+    <div class="flex h-[44px] w-full min-w-[200px] md:min-w-[240px] flex-col justify-center mt-1">
       
-      <div v-if="!uiState.showJoyDimensions" class="text-[11px] lg:text-xs font-medium text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-3">
+      <div v-if="!uiState.showJoyDimensions" class="text-[11px] lg:text-xs font-medium text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-3 text-left">
         Encompasses <strong>{{ formattedInteractions }}</strong> interactions<br />
         across <strong>{{ displayedSourceCount }}</strong> {{ displayedSourceCount === 1 ? 'source' : 'sources' }}
         <template v-if="smartLocale">
@@ -54,27 +54,45 @@
         </template>
       </div>
 
-      <div v-else class="flex flex-col gap-1.5 w-full pr-4 animate-in fade-in duration-300">
-        <div class="w-full h-1 flex rounded-full overflow-hidden bg-slate-100 opacity-90">
-          <div :style="{ width: `${dimensions.hopelessness}%` }" class="bg-rose-500"></div>
-          <div :style="{ width: `${dimensions.frustration}%` }" class="bg-orange-400"></div>
-          <div :style="{ width: `${dimensions.engagement}%` }" class="bg-slate-300"></div>
-          <div :style="{ width: `${dimensions.confidence}%` }" class="bg-blue-400"></div>
-          <div :style="{ width: `${dimensions.joy}%` }" class="bg-emerald-400"></div>
+      <div v-else class="flex flex-col justify-center gap-2 w-full pr-0 min-[480px]:pr-4 animate-in fade-in duration-300 h-full">
+        <div class="w-full h-1.5 flex rounded-full overflow-hidden bg-slate-100 opacity-90 shrink-0">
+          <div :style="{ width: `${dimensions.hopelessness}%` }" class="bg-rose-500 transition-all duration-500"></div>
+          <div :style="{ width: `${dimensions.frustration}%` }" class="bg-orange-400 transition-all duration-500"></div>
+          <div :style="{ width: `${dimensions.engagement}%` }" class="bg-slate-300 transition-all duration-500"></div>
+          <div :style="{ width: `${dimensions.confidence}%` }" class="bg-blue-400 transition-all duration-500"></div>
+          <div :style="{ width: `${dimensions.joy}%` }" class="bg-emerald-400 transition-all duration-500"></div>
         </div>
-        <div class="flex justify-between w-full text-[10px] lg:text-[12px] font-medium text-slate-400">
-          <span>😔 {{ dimensions.hopelessness }}%</span>
-          <span>😤 {{ dimensions.frustration }}%</span>
-          <span>👀 {{ dimensions.engagement }}%</span>
-          <span>😎 {{ dimensions.confidence }}%</span>
-          <span>✨ {{ dimensions.joy }}%</span>
+        
+        <div class="flex justify-between w-full px-1">
+          <div class="flex flex-col items-center gap-0.5">
+            <span class="text-[14px] leading-none">😔</span>
+            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.hopelessness }}%</span>
+          </div>
+          <div class="flex flex-col items-center gap-0.5">
+            <span class="text-[14px] leading-none">😤</span>
+            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.frustration }}%</span>
+          </div>
+          <div class="flex flex-col items-center gap-0.5">
+            <span class="text-[14px] leading-none">👀</span>
+            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.engagement }}%</span>
+          </div>
+          <div class="flex flex-col items-center gap-0.5">
+            <span class="text-[14px] leading-none">😎</span>
+            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.confidence }}%</span>
+          </div>
+          <div class="flex flex-col items-center gap-0.5">
+            <span class="text-[14px] leading-none">✨</span>
+            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.joy }}%</span>
+          </div>
         </div>
       </div>
+
     </div>
   </div>
 </template>
 
 <script setup>
+// [Script remains exactly unchanged from your provided version]
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
@@ -91,8 +109,6 @@ const closePopup = () => { uiState.showInfoPopup = false }
 onMounted(() => document.addEventListener('click', closePopup))
 onBeforeUnmount(() => document.removeEventListener('click', closePopup))
 
-// --- SMART LOCALE & SOURCE ROUTING ---
-
 const allAvailableSources = computed(() => {
   if (!bloomStore.sourceInteractionStats) return []
   return Object.keys(bloomStore.sourceInteractionStats)
@@ -107,15 +123,9 @@ const displayedSourceCount = computed(() => {
 
 const smartLocale = computed(() => {
   let targetSource = null;
-  
-  if (activeSource.value !== 'all') {
-    targetSource = activeSource.value; 
-  } else if (allAvailableSources.value.length === 1) {
-    targetSource = allAvailableSources.value[0]; 
-  }
-
+  if (activeSource.value !== 'all') { targetSource = activeSource.value; } 
+  else if (allAvailableSources.value.length === 1) { targetSource = allAvailableSources.value[0]; }
   if (!targetSource) return null;
-
   const stats = bloomStore.sourceInteractionStats?.[targetSource];
   if (!stats) return null;
 
@@ -123,16 +133,12 @@ const smartLocale = computed(() => {
     const count = Object.keys(stats.country).filter(c => c !== 'global' && c !== 'default').length;
     return { count, label: count === 1 ? 'country' : 'countries' };
   }
-
   if (targetSource === 'google_play' && stats.lang) {
     const count = Object.keys(stats.lang).filter(l => l !== 'global' && l !== 'default').length;
     return { count, label: count === 1 ? 'language' : 'languages' };
   }
-
   return null;
 })
-
-// --- MATH & FORMATTING ---
 
 const formatNumber = (num) => new Intl.NumberFormat('en-US').format(num || 0)
 

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as api from '@/services/api'
-import sortBy from 'lodash/sortBy'
+import { sortBy } from 'lodash-es'
 
 // ==========================================
 // 1. PURE MATH & UTILITIES (From bloomlib.js)

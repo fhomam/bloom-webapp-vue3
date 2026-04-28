@@ -81,7 +81,7 @@ import { ref, onMounted, onUnmounted, computed, watch, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
 import { useUiStore } from '@/stores/ui'
-import { debounce } from 'lodash'
+import { debounce } from 'lodash-es'
 
 import ReportRibbon from '@/components/bloom/ReportRibbon.vue'
 import IssueCard from '@/components/bloom/IssueCard.vue'

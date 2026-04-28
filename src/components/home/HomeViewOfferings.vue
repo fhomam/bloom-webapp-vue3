@@ -20,12 +20,12 @@
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4" :class="{ 'opacity-50 transition-opacity': homeStore.isPortfolioLoading }">
         <div v-for="offering in paginatedProcessed" :key="offering.offeringXid" class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group flex flex-col h-full relative overflow-hidden">
-          <div class="flex items-start justify-between mb-5">
-            <div class="flex flex-col pr-4">
-              <h3 class="text-lg font-bold text-slate-900 truncate" :title="offering.offeringXid">
+          <div class="flex items-start justify-between mb-5 gap-3">
+            <div class="flex flex-col min-w-0 flex-1 pr-1">
+              <h3 class="text-lg font-bold text-slate-900 line-clamp-2 leading-tight" :title="offering.offeringXid">
                 {{ offering.name || offering.offeringXid }}
               </h3>
-              <span class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">
+              <span class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider truncate">
                 {{ offering.offeringType }} &bull; LATEST: {{ offering.latestBloomKey }}
               </span>
             </div>
@@ -113,15 +113,16 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4" :class="{ 'opacity-50 transition-opacity': homeStore.isPortfolioLoading }">
         <div v-for="offering in paginatedUnprocessed" :key="offering.offeringXid" class="bg-white rounded-2xl border border-dashed border-slate-300 p-6 shadow-sm flex flex-col h-full relative">
-          <div class="flex items-start justify-between mb-4">
-            <div class="flex flex-col pr-4">
-              <h3 class="text-lg font-bold text-slate-600 truncate" :title="offering.offeringXid">
+          <div class="flex items-start justify-between mb-4 gap-3">
+            <div class="flex flex-col min-w-0 flex-1 pr-1">
+              <h3 class="text-lg font-bold text-slate-600 line-clamp-2 leading-tight" :title="offering.offeringXid">
                 {{ offering.name || offering.offeringXid }}
               </h3>
-              <span class="text-[10px] font-bold text-rose-400 mt-0.5 uppercase tracking-wider">
+              <span class="text-[10px] font-bold text-rose-400 mt-1 uppercase tracking-wider truncate">
                 {{ offering.offeringType }} &bull; No Reports Generated
               </span>
             </div>
+            
             <img v-if="offering.icon" :src="offering.icon" :alt="offering.name" class="w-11 h-11 rounded-xl border border-slate-100 shadow-sm shrink-0 object-cover opacity-80" />
             <div v-else class="w-11 h-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
               <span class="text-slate-400 text-xs font-bold">{{ (offering.name) ? offering.name.charAt(0) : 'X' }}</span>

@@ -49,7 +49,7 @@
             </div>
             <span class="text-[9px] text-slate-300">&bull;</span>
             <span class="text-[10px] font-medium text-slate-400">
-              {{ getTimeAgo(issue.updatedAt, 'Updated') }}
+              {{ getTimeAgo(issue.latestInteractionTs, 'Latest Interaction') }}
             </span>
           </div>
 
@@ -111,6 +111,7 @@ const unprocessedOfferingsCount = computed(() => {
 
 const visibleTrendingIssues = computed(() => {
   const limit = unprocessedOfferingsCount.value === 0 ? 3 : 5;
+
   return homeStore.trendingIssuesData.slice(0, limit);
 })
 

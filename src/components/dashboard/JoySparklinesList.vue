@@ -16,13 +16,13 @@
           :key="dim.id"
           @click="selectedDimensionId = dim.id"
           :class="[
-            'flex items-center justify-between p-3 border rounded-xl transition-all cursor-pointer group',
+            'flex flex-col min-[480px]:flex-row items-start min-[480px]:items-center justify-between p-3 border rounded-xl transition-all cursor-pointer group',
             selectedDimensionId === dim.id 
               ? 'border-slate-300 bg-slate-50 shadow-sm ring-1 ring-slate-200' 
               : 'border-transparent hover:border-slate-200 hover:bg-slate-50'
           ]"
         >
-          <div class="flex items-center gap-3 w-1/3 min-w-[130px]">
+          <div class="flex items-center gap-3 w-full min-[480px]:w-1/3 min-w-0 min-[480px]:min-w-[130px] mb-2 min-[480px]:mb-0">
             <span class="text-3xl leading-none transition-transform group-hover:scale-110">{{ dim.emoji }}</span>
             <div class="flex flex-col">
               <span class="text-sm font-bold text-slate-900">{{ dim.label }}</span>
@@ -30,7 +30,7 @@
             </div>
           </div>
 
-          <div class="flex-1 h-14 w-full relative ml-4 bg-white/50 border border-slate-100 rounded-md p-1 overflow-hidden">
+          <div class="w-full min-[480px]:flex-1 h-12 min-[480px]:h-14 relative ml-0 min-[480px]:ml-4 bg-white/50 border border-slate-100 rounded-md p-1 overflow-hidden shrink-0 mt-2 min-[480px]:mt-0">
             <v-chart class="absolute inset-0 w-full h-full" :option="getSparklineOption(dim)" autoresize />
           </div>
         </div>

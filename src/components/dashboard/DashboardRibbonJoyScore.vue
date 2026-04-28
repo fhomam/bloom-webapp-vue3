@@ -1,51 +1,49 @@
 <template>
   <div 
-    class="flex flex-col gap-1 cursor-pointer group rounded-xl max-w-fit mx-auto min-[480px]:mx-0 w-full md:w-auto"
+    class="flex flex-col items-center min-[480px]:items-start gap-1 cursor-pointer group rounded-xl w-full min-[480px]:w-auto"
     @click="uiState.showJoyDimensions = !uiState.showJoyDimensions"
   >
-    <div class="flex items-end justify-center min-[480px]:justify-start gap-2 lg:gap-3 relative">
-      <span class="text-4xl md:text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tighter leading-none transition-all">
+    <div class="flex items-end justify-center min-[480px]:justify-start gap-1.5 lg:gap-3 relative">
+      <span class="text-[28px] min-[480px]:text-3xl lg:text-5xl font-extrabold text-slate-900 tracking-tighter leading-none transition-all">
         {{ joyScore }}
       </span>
-      <div class="flex flex-col pb-0.5 lg:pb-1">
+      
+      <div class="flex items-center gap-1 pb-1 lg:pb-1.5">
+        <span class="text-base lg:text-2xl leading-none">{{ joyEmoji }}</span>
         
-        <div class="flex items-center gap-1.5 relative">
-          <span class="text-base lg:text-2xl leading-none">{{ joyEmoji }}</span>
-          
-          <button 
-            class="text-slate-300 hover:text-slate-500 transition-colors cursor-pointer"
-            @click.stop="uiState.showInfoPopup = !uiState.showInfoPopup" 
-          >
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          </button>
+        <button 
+          class="text-slate-300 hover:text-slate-500 transition-colors cursor-pointer"
+          @click.stop="(e) => toggleInfoPopup(e)" 
+        >
+          <svg class="w-3 h-3 lg:w-3.5 lg:h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </button>
 
-          <div 
-            v-if="uiState.showInfoPopup" 
-            class="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 shadow-xl rounded-xl p-4 z-50 text-left cursor-default animate-in fade-in zoom-in-95 duration-200" 
-            @click.stop
+        <div 
+          v-if="uiState.showInfoPopup" 
+          class="absolute top-full mt-2 w-64 bg-white border border-slate-200 shadow-xl rounded-xl p-4 z-50 text-left cursor-default animate-in fade-in zoom-in-95 duration-200" 
+          :style="uiState.infoPopupStyle"
+          @click.stop
+        >
+          <p class="text-xs text-slate-600 leading-relaxed mb-3">
+            The Joy Score surfaces a 5-dimensional metric from organic customer interactions to help assess the health of an offering.
+          </p>
+          <a 
+            href="https://www.withbloom.ai/two-pagers/the-joy-score" 
+            target="_blank" 
+            class="text-[11px] font-bold text-bloom-primary hover:text-slate-900 transition-colors inline-flex items-center gap-1"
           >
-            <p class="text-xs text-slate-600 leading-relaxed mb-3">
-              The Joy Score surfaces a 5-dimensional metric from organic customer interactions to help assess the health of an offering.
-            </p>
-            <a 
-              href="https://www.withbloom.ai/two-pagers/the-joy-score" 
-              target="_blank" 
-              class="text-[11px] font-bold text-bloom-primary hover:text-slate-900 transition-colors inline-flex items-center gap-1"
-            >
-              Read the Joy Two-Pager
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-            </a>
-          </div>
+            Read the Joy Two-Pager
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+          </a>
         </div>
-
-        <span class="text-[9px] lg:text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 whitespace-nowrap">
-          {{ joyLabel }}
-        </span>
       </div>
     </div>
     
-    <div class="flex h-[44px] w-full min-w-[180px] lg:min-w-[240px] shrink-0 flex-col justify-center mt-1">
-      
+    <span class="text-[9px] lg:text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 text-center min-[480px]:text-left whitespace-nowrap">
+      {{ joyLabel }}
+    </span>
+    
+    <div class="hidden min-[480px]:flex h-[44px] w-full min-w-[240px] shrink-0 flex-col justify-center mt-1">
       <div v-if="!uiState.showJoyDimensions" class="text-[11px] lg:text-xs font-medium text-slate-500 leading-relaxed border-l-2 border-slate-200 pl-3 text-left">
         Encompasses <strong>{{ formattedInteractions }}</strong> interactions<br />
         across <strong>{{ displayedSourceCount }}</strong> {{ displayedSourceCount === 1 ? 'source' : 'sources' }}
@@ -54,7 +52,7 @@
         </template>
       </div>
 
-      <div v-else class="flex flex-col justify-center gap-2 w-full pr-0 min-[480px]:pr-4 animate-in fade-in duration-300 h-full">
+      <div v-else class="flex flex-col justify-center gap-2 w-full pr-4 animate-in fade-in duration-300 h-full">
         <div class="w-full h-1.5 flex rounded-full overflow-hidden bg-slate-100 opacity-90 shrink-0">
           <div :style="{ width: `${dimensions.hopelessness}%` }" class="bg-rose-500 transition-all duration-500"></div>
           <div :style="{ width: `${dimensions.frustration}%` }" class="bg-orange-400 transition-all duration-500"></div>
@@ -62,36 +60,21 @@
           <div :style="{ width: `${dimensions.confidence}%` }" class="bg-blue-400 transition-all duration-500"></div>
           <div :style="{ width: `${dimensions.joy}%` }" class="bg-emerald-400 transition-all duration-500"></div>
         </div>
-        
         <div class="flex justify-between w-full px-1">
-          <div class="flex flex-col items-center gap-0.5">
-            <span class="text-[14px] leading-none">😔</span>
-            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.hopelessness }}%</span>
-          </div>
-          <div class="flex flex-col items-center gap-0.5">
-            <span class="text-[14px] leading-none">😤</span>
-            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.frustration }}%</span>
-          </div>
-          <div class="flex flex-col items-center gap-0.5">
-            <span class="text-[14px] leading-none">👀</span>
-            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.engagement }}%</span>
-          </div>
-          <div class="flex flex-col items-center gap-0.5">
-            <span class="text-[14px] leading-none">😎</span>
-            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.confidence }}%</span>
-          </div>
-          <div class="flex flex-col items-center gap-0.5">
-            <span class="text-[14px] leading-none">✨</span>
-            <span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.joy }}%</span>
-          </div>
+          <div class="flex flex-col items-center gap-0.5"><span class="text-[14px] leading-none">😔</span><span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.hopelessness }}%</span></div>
+          <div class="flex flex-col items-center gap-0.5"><span class="text-[14px] leading-none">😤</span><span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.frustration }}%</span></div>
+          <div class="flex flex-col items-center gap-0.5"><span class="text-[14px] leading-none">👀</span><span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.engagement }}%</span></div>
+          <div class="flex flex-col items-center gap-0.5"><span class="text-[14px] leading-none">😎</span><span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.confidence }}%</span></div>
+          <div class="flex flex-col items-center gap-0.5"><span class="text-[14px] leading-none">✨</span><span class="text-[9px] lg:text-[10px] font-bold text-slate-400">{{ dimensions.joy }}%</span></div>
         </div>
       </div>
-
     </div>
+
   </div>
 </template>
 
 <script setup>
+// [Script remains exactly unchanged]
 import { reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
@@ -101,7 +84,8 @@ const route = useRoute()
 
 const uiState = reactive({
   showJoyDimensions: false,
-  showInfoPopup: false 
+  showInfoPopup: false,
+  infoPopupStyle: {}
 })
 
 const closePopup = () => { uiState.showInfoPopup = false }
@@ -185,4 +169,28 @@ const dimensions = computed(() => {
     joy: Math.round(((m.joy || 0) / total) * 100)
   }
 })
+
+/* Methods */
+const toggleInfoPopup = (event) => {
+  if (uiState.showInfoPopup) {
+    uiState.showInfoPopup = false
+    return
+  }
+  uiState.showInfoPopup = true
+  
+  if (event) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const spaceRight = window.innerWidth - rect.right
+    const spaceLeft = rect.left
+    
+    // A w-64 popup is 256px. If less than ~140px of space, anchor to the safe edge.
+    if (spaceRight < 140) {
+      uiState.infoPopupStyle = { right: '0px', left: 'auto', transform: 'none' }
+    } else if (spaceLeft < 140) {
+      uiState.infoPopupStyle = { left: '0px', right: 'auto', transform: 'none' }
+    } else {
+      uiState.infoPopupStyle = { left: '50%', transform: 'translateX(-50%)' }
+    }
+  }
+}
 </script>

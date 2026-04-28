@@ -1,19 +1,13 @@
 <template>
-  <div class="bg-white rounded-2xl border border-slate-200 p-4 min-[480px]:p-5 lg:p-6 shadow-sm grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-[1fr_auto_1fr] gap-y-4 min-[480px]:gap-y-5 gap-x-4 lg:gap-x-8 items-center relative z-10 w-full">
+  <div class="bg-white rounded-2xl border border-slate-200 p-4 min-[480px]:p-5 lg:p-6 shadow-sm grid grid-cols-2 md:grid-cols-[1fr_auto_1fr] gap-y-4 min-[480px]:gap-y-5 gap-x-0 min-[480px]:gap-x-4 lg:gap-x-8 items-center relative z-10 w-full">
     
-    <div class="row-start-2 md:row-start-1 md:col-start-1 justify-self-center min-[480px]:justify-self-start w-full">
-      <DashboardRibbonJoyScore />
-    </div>
-
-    <div class="row-start-1 min-[480px]:col-span-2 md:col-span-1 md:row-start-1 md:col-start-2 flex flex-col items-center justify-center text-center min-w-0 w-full px-1 min-[480px]:px-2">
+    <div class="col-span-2 md:col-span-1 md:row-start-1 md:col-start-2 flex flex-col items-center justify-center text-center min-w-0 w-full px-1 min-[480px]:px-2">
       <span class="text-[9px] lg:text-[10px] font-extrabold text-bloom-primary uppercase tracking-[0.2em] mb-1.5">
         Executive Dashboard
       </span>
-      
       <h2 class="text-xl lg:text-2xl font-bold text-slate-900 tracking-tight text-center leading-tight mb-3 lg:mb-4 w-full">
         {{ offeringTitle }}
       </h2>
-      
       <div class="flex flex-nowrap shrink-0 items-center justify-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg py-1 lg:py-1.5 px-2 lg:px-3 w-max mx-auto">
         <Dropdown v-model="activePeriodType" :options="periodTypeOptions" variant="minimal" />
         <span class="text-slate-300 font-light text-xs shrink-0">/</span>
@@ -21,7 +15,11 @@
       </div>
     </div>
 
-    <div class="row-start-3 min-[480px]:row-start-2 md:row-start-1 md:col-start-3 justify-self-center min-[480px]:justify-self-end flex md:justify-end w-full">
+    <div class="row-start-2 md:row-start-1 md:col-start-1 justify-self-center min-[480px]:justify-self-start w-full border-r border-slate-100 min-[480px]:border-r-0 pr-3 min-[480px]:pr-0">
+      <DashboardRibbonJoyScore />
+    </div>
+
+    <div class="row-start-2 md:row-start-1 md:col-start-3 justify-self-center min-[480px]:justify-self-end w-full pl-3 min-[480px]:pl-0">
       <DashboardRibbonPmi />
     </div>
 

@@ -8,13 +8,13 @@
       <span class="text-xs font-medium text-slate-400">By Volume</span>
     </div>
 
-    <div class="flex p-1 bg-slate-100 rounded-lg mb-4 self-start shrink-0">
+    <div class="flex p-1 bg-slate-100 rounded-lg mb-4 w-full min-[360px]:w-fit self-start shrink-0">
       <button 
         v-for="tab in taxonomyTabs" 
         :key="tab.id"
         @click="activeTab = tab.id"
         :class="[
-          'px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-md transition-all', 
+          'flex-1 min-[360px]:flex-none px-1.5 min-[360px]:px-3 py-1.5 text-[9.5px] min-[360px]:text-[11px] font-bold uppercase tracking-wider rounded-md transition-all text-center', 
           activeTab === tab.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
         ]"
       >

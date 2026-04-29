@@ -4,7 +4,7 @@
     <div v-if="processedOfferings.length > 0" class="flex flex-col gap-4">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-bold text-slate-900">
-          Active Portfolios <span class="text-slate-400 font-normal ml-1">({{ processedOfferings.length }})</span>
+          Active Offerings <span class="text-slate-400 font-normal ml-1">({{ processedOfferings.length }})</span>
         </h2>
         
         <div v-if="totalPages > 1" class="flex items-center gap-2">
@@ -69,7 +69,7 @@
 
     <div v-else-if="homeStore.isPortfolioLoading || homeStore.portfolioData.length === 0" class="flex flex-col gap-4">
       <div class="flex items-center justify-between">
-        <h2 class="text-sm font-bold text-slate-900">Active Portfolios</h2>
+        <h2 class="text-sm font-bold text-slate-900">Active Offerings</h2>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div v-for="i in 4" :key="i" class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col h-full opacity-50 pointer-events-none animate-pulse">
@@ -187,7 +187,7 @@ const unprocessedOfferings = computed(() => {
   return (homeStore.portfolioData || []).filter(o => !o.latestBloomKey)
 })
 
-// --- Pagination Logic (Active Portfolios) ---
+// --- Pagination Logic (Active Offerings) ---
 const itemsPerPage = 4
 const currentPage = ref(0)
 const totalPages = computed(() => Math.ceil(processedOfferings.value.length / itemsPerPage))

@@ -262,14 +262,22 @@ const isSidebarEffectivelyOpen = computed(() => {
 
 const getRoute = (path) => appStore.orgXid ? `/${appStore.orgXid}/${path}` : ''
 
-// -- USER MENU --
+// -- USER MENU RESPONSIVE BEHAVIORS--
 let windowWidth = window.innerWidth
+
 const handleResize = () => {
   const newWidth = window.innerWidth
-  // Only close the menu if we cross the 768px (md) breakpoint
+  
+  // 1. Close User Menu if crossing the breakpoint
   if ((windowWidth >= 768 && newWidth < 768) || (windowWidth < 768 && newWidth >= 768)) {
     if (isUserMenuOpen.value) isUserMenuOpen.value = false
   }
+  
+  // 2. Automatically collapse the left sidebar when resizing below 768px (md breakpoint)
+  if (windowWidth >= 768 && newWidth < 768) {
+    ui.isLeftCollapsed = true
+  }
+
   windowWidth = newWidth
 }
 
@@ -318,6 +326,11 @@ watch(
   () => {
     if (route.name === 'BloomDashboard') ui.lastDashboardRoute = route.fullPath
     if (route.name === 'BloomReport') ui.lastReportRoute = route.fullPath
+
+    // Close the sidebar on mobile automatically after any navigation
+    if (window.innerWidth < 768) {
+      ui.isLeftCollapsed = true
+    }
   },
   { immediate: true }
 )

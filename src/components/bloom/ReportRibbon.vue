@@ -25,7 +25,7 @@
 
       <div class="flex flex-col items-center justify-center w-1/3 text-center min-w-0 shrink">
         <span class="text-[9px] lg:text-[10px] font-extrabold text-bloom-primary uppercase tracking-[0.2em] mb-1.5">
-          Taxonomy Explorer
+          Bloom Report
         </span>
         <h1 class="text-xl lg:text-[24px] font-bold text-slate-900 tracking-tight leading-tight break-words w-full px-2">{{ appName }}</h1>
         <div class="mt-2.5">

@@ -119,17 +119,24 @@ const dimConfig = {
 const selectedDimension = computed(() => selectedDimensionId.value ? dimConfig[selectedDimensionId.value] : null)
 const getEmojiForMetric = (metric) => dimConfig[metric]?.emoji || '😶'
 
-// 🔥 FIX 1: Unify the Anchor Date
-// Using the TTM payload's anchorDate ensures the sparklines and verbatim texts perfectly align 
-// to the literal end of the selected period.
-const anchorMs = computed(() => {
-  if (bloomStore.ttmTrendData?.metadata?.anchorDate) {
-    return new Date(bloomStore.ttmTrendData.metadata.anchorDate).getTime()
-  }
-  return Date.now()
-})
+// Check if the mathematical end of the period is in the future
+const isOngoingPeriod = computed(() => {
+  if (!bloomStore.ttmTrendData?.metadata?.anchorDate) return false;
+  return new Date(bloomStore.ttmTrendData.metadata.anchorDate).getTime() > Date.now();
+});
 
-// 🔥 FIX 2: TTM Piggybacking (No new endpoints!)
+
+// Clamp the anchor to 'now' so ongoing periods trail from today, 
+// while past periods trail from their historical end date.
+const anchorMs = computed(() => {
+  let targetMs = Date.now();
+  if (bloomStore.ttmTrendData?.metadata?.anchorDate) {
+    targetMs = new Date(bloomStore.ttmTrendData.metadata.anchorDate).getTime();
+  }
+  return Math.min(targetMs, Date.now());
+});
+
+// TTM Piggybacking (No new endpoints!)
 const processedDimensions = computed(() => {
   const results = JSON.parse(JSON.stringify(dimConfig))
   Object.values(results).forEach(dim => {
@@ -267,13 +274,23 @@ const verbatimFeed = computed(() => {
 })
 
 const getSparklineOption = (dim) => {
+  const endLabel = isOngoingPeriod.value ? 'Today' : 'End'; // Dynamic label
+  
   return {
     grid: { top: 5, right: 10, bottom: 15, left: 10 },
     xAxis: { 
       type: 'category', 
       boundaryGap: false,
       axisLine: { show: true, lineStyle: { color: '#e2e8f0' } }, 
-      axisLabel: { showMinLabel: true, showMaxLabel: true, color: '#94a3b8', fontSize: 9, margin: 4, formatter: (value, index) => index === 0 ? '-28d' : (index === 27 ? 'End' : '') }, 
+      axisLabel: { 
+        showMinLabel: true, 
+        showMaxLabel: true, 
+        color: '#94a3b8', 
+        fontSize: 9, 
+        margin: 4, 
+        // Use the dynamic endLabel here
+        formatter: (value, index) => index === 0 ? '-28d' : (index === 27 ? endLabel : '') 
+      }, 
       axisTick: { show: false }
     },
     yAxis: { type: 'value', show: false, min: 'dataMin', max: 'dataMax' },

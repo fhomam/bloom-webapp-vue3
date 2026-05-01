@@ -14,7 +14,7 @@
         <div 
           v-for="dim in processedDimensions" 
           :key="dim.id"
-          @click="selectedDimensionId = dim.id"
+          @click="handleDimensionClick(dim.id)"
           :class="[
             'flex flex-col min-[480px]:flex-row items-start min-[480px]:items-center justify-between p-3 border rounded-xl transition-all cursor-pointer group',
             selectedDimensionId === dim.id 
@@ -36,7 +36,10 @@
         </div>
       </div>
 
-      <div class="lg:w-2/5 xl:w-1/3 flex flex-col bg-slate-50 border border-slate-100 rounded-xl p-5 overflow-hidden max-h-[500px] lg:max-h-[460px]">
+      <div 
+        ref="feedContainerRef"
+        class="lg:w-2/5 xl:w-1/3 flex flex-col bg-slate-50 border border-slate-100 rounded-xl p-5 overflow-hidden max-h-[500px] lg:max-h-[460px]"
+      >
         
         <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 shrink-0">
           <div class="flex items-center gap-2">
@@ -92,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useBloomStore } from '@/stores/bloom'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -105,6 +108,7 @@ use([CanvasRenderer, LineChart, GridComponent])
 const bloomStore = useBloomStore()
 
 const selectedDimensionId = ref(null)
+const feedContainerRef = ref(null) // 2. Initialize the ref
 const INTERACTION_LIST_LIMIT = 100 
 
 const dimOrder = ['joy', 'confidence', 'engagement', 'frustration', 'hopelessness']
@@ -310,6 +314,19 @@ const getSparklineOption = (dim) => {
         }
       }
     ]
+  }
+}
+
+const handleDimensionClick = async (dimId) => {
+  selectedDimensionId.value = dimId
+  
+  // Only scroll on screens smaller than the `lg` breakpoint (1024px) where the layout stacks
+  if (window.innerWidth < 1024) {
+    await nextTick() // Wait for the DOM to update the feed below
+    if (feedContainerRef.value) {
+      // Scroll the feed container into the top of the viewport smoothly
+      feedContainerRef.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   }
 }
 

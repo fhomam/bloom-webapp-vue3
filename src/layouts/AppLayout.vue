@@ -394,7 +394,7 @@ const activeOffering = computed({
     } else if (offeringData) {
       const blooms = offeringData.blooms || []
       if (blooms.length > 0) {
-        const latest = [...blooms].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+        const latest = [...blooms].sort((a, b) => b.bloomKey.localeCompare(a.bloomKey))[0]
         targetType = latest.bloomType
         targetId = latest.bloomKey
       }
@@ -432,7 +432,7 @@ const dashboardLink = computed(() => {
       oType = offeringData.details?.offeringType || oType
       const blooms = offeringData.blooms || []
       if (blooms.length > 0) {
-        const latest = [...blooms].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+        const latest = [...blooms].sort((a, b) => b.bloomKey.localeCompare(a.bloomKey))[0]
         pType = latest.bloomType || pType
         pId = latest.bloomKey || pId
       }
@@ -515,12 +515,12 @@ onMounted(async () => {
 
       for (const [xid, offeringData] of Object.entries(bloomsObj)) {
         const reports = offeringData?.blooms || []
-        for (const report of reports) {
-          const reportTime = report.updatedAt ? new Date(report.updatedAt).getTime() : 0
-          const latestTime = latestReport?.updatedAt ? new Date(latestReport.updatedAt).getTime() : 0
-          
-          if (!latestReport || reportTime > latestTime) {
-            latestReport = report
+        
+        if (reports.length > 0) {
+          const topOfferingReport = [...reports].sort((a, b) => b.bloomKey.localeCompare(a.bloomKey))[0]
+
+          if (!latestReport || topOfferingReport.bloomKey.localeCompare(latestReport.bloomKey) > 0) {
+            latestReport = topOfferingReport
             latestDetails = offeringData.details
           }
         }

@@ -49,7 +49,7 @@
             </div>
             <span class="text-[9px] text-slate-300">&bull;</span>
             <span class="text-[10px] font-medium text-slate-400">
-              {{ getTimeAgo(issue.latestInteractionTs, 'Latest Interaction') }}
+              {{ getTimeAgo(issue.firstSeenTs, 'First Seen') }}
             </span>
           </div>
 

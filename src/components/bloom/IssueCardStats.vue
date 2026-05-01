@@ -68,11 +68,11 @@ import { useBloomStore } from '@/stores/bloom'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
+import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 
-// Register ECharts modules globally for this component
-use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent])
+// Register ECharts modules globally for this component (Added MarkLineComponent)
+use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent])
 
 const props = defineProps({
   issue: { type: Object, required: true },
@@ -106,11 +106,13 @@ const activeChartColor = computed(() => CHART_COLORS[activeChartColorName] || CH
 // ---------------------------------------------------------
 // TIME MACHINE ANCHOR & STATS LOGIC
 // ---------------------------------------------------------
+// 🔥 FIX 1: Clamp anchor to "Today" so ongoing periods know where the future starts
 const anchorMs = computed(() => {
+  let targetMs = Date.now()
   if (bloomStore.ttmTrendData?.metadata?.anchorDate) {
-    return new Date(bloomStore.ttmTrendData.metadata.anchorDate).getTime()
+    targetMs = new Date(bloomStore.ttmTrendData.metadata.anchorDate).getTime()
   }
-  return Date.now()
+  return Math.min(targetMs, Date.now())
 })
 
 const issueStats = computed(() => {
@@ -235,6 +237,10 @@ const sparklineOption = computed(() => {
   
   let categories = []
   let historyData = []
+  const currentAnchor = anchorMs.value
+  
+  let hasFutureBars = false
+  let todayKey = null
   
   if (range) {
     const durationDays = (range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24)
@@ -249,7 +255,7 @@ const sparklineOption = computed(() => {
     if (bucketMode === 'month') {
       while (cursor <= range.end) {
         const key = `${cursor.getUTCFullYear()}-${cursor.getUTCMonth()}`
-        buckets.push({ key, count: 0 })
+        buckets.push({ key, startMs: cursor.getTime(), count: 0 })
         cursor.setUTCMonth(cursor.getUTCMonth() + 1)
       }
     } else if (bucketMode === 'week') {
@@ -266,7 +272,7 @@ const sparklineOption = computed(() => {
     } else {
       while (cursor <= range.end) {
         const key = cursor.toISOString().split('T')[0]
-        buckets.push({ key, count: 0 })
+        buckets.push({ key, startMs: cursor.getTime(), count: 0 })
         cursor.setUTCDate(cursor.getUTCDate() + 1)
       }
     }
@@ -297,14 +303,73 @@ const sparklineOption = computed(() => {
     }
 
     categories = buckets.map(b => b.key)
-    historyData = buckets.map(b => b.count)
+    
+    // Pre-calculate if we have future bars, and exactly which key is "Today"
+    hasFutureBars = buckets.some(b => b.startMs > currentAnchor)
+    if (hasFutureBars) {
+      // Find the very last bucket that is NOT in the future
+      const todayBucket = [...buckets].reverse().find(b => b.startMs <= currentAnchor)
+      if (todayBucket) todayKey = todayBucket.key
+    }
+    
+    // Apply the green color specifically to the "Today" bar
+    historyData = buckets.map(b => {
+      const isFuture = b.startMs > currentAnchor
+      const isToday = b.key === todayKey
+
+      let barColor = activeChartColor.value
+      if (isFuture) barColor = '#f1f5f9'
+      else if (isToday) barColor = '#8a9a33' // Emerald-500 Green
+
+      return {
+        value: b.count,
+        itemStyle: {
+          color: barColor,
+          borderRadius: [2, 2, 0, 0]
+        }
+      }
+    })
   } else {
     categories = Array.from({ length: 28 }, (_, i) => i)
-    historyData = new Array(28).fill(0) 
+    historyData = Array.from({ length: 28 }, () => ({
+      value: 0,
+      itemStyle: { color: '#f1f5f9', borderRadius: [2, 2, 0, 0] }
+    }))
+  }
+
+  const seriesConfig = {
+    data: historyData,
+    type: 'bar',
+    barMinHeight: 3, 
+    barWidth: '70%'
+  }
+
+  // 🔥 Inject the "Now" indicator with text
+  if (hasFutureBars && todayKey) {
+    seriesConfig.markLine = {
+      symbol: ['none', 'none'],
+      silent: true,
+      label: { 
+        show: true, 
+        position: 'end', // Places it at the top of the line
+        formatter: 'Today', // The text to display
+        color: '#8a9a33', 
+        fontSize: 9,
+        fontWeight: 'bold'
+      },
+      lineStyle: { 
+        color: '#8a9a33', 
+        type: 'dashed', 
+        width: 1.5, 
+        opacity: 0.8 
+      },
+      data: [{ xAxis: todayKey }]
+    }
   }
 
   return {
-    grid: { top: 2, right: 0, bottom: 0, left: 0 },
+    // Increased 'top' from 5 to 15 to make room for the "Now" text
+    grid: { top: 15, right: 0, bottom: 0, left: 0 }, 
     xAxis: { 
       type: 'category', 
       data: categories, 
@@ -317,18 +382,7 @@ const sparklineOption = computed(() => {
       min: 0, 
       max: (value) => value.max > 0 ? value.max : 1 
     },
-    series: [
-      {
-        data: historyData,
-        type: 'bar',
-        barMinHeight: 3, 
-        barWidth: '70%', 
-        itemStyle: {
-          color: activeChartColor.value,
-          borderRadius: [2, 2, 0, 0]
-        }
-      }
-    ]
+    series: [seriesConfig]
   }
 })
 

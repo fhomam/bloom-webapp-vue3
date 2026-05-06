@@ -67,6 +67,7 @@ export const useBloomStore = defineStore('bloom', () => {
     priorGeneralInteractions: null 
   })
   const ttmTrendData = ref(null)
+  const topIssues = ref(null)
 
   // --- GETTERS ---
   
@@ -178,6 +179,7 @@ export const useBloomStore = defineStore('bloom', () => {
         api.getBloomPmiTimeline(corePayload),
         fetchPriorExecutiveStats(bloomApiPayload), // handles its own assignment
         fetchTtmTrendData(bloomApiPayload),
+        fetchTopIssues(bloomApiPayload),
       ])
       
       currentBloom.value = bloomRes
@@ -277,12 +279,23 @@ export const useBloomStore = defineStore('bloom', () => {
     }
   }
 
+  async function fetchTopIssues(payload) {
+    try {
+      // Assuming you wired this up in api.js as getBloomTtmTrend
+      const result = await api.getBloomTopIssues(payload)
+      topIssues.value = result || null
+    } catch (error) {
+      console.error('Failed to fetch TTM trend data', error)
+      topIssues.value = null
+    }
+  }
+
   return { 
     currentBloom, offeringContext, themes, sourceInteractionStats, 
     sourcesWithVersion, isLoading, error, allIssues, joyStats, 
     taxoStats, getFilteredAndSortedIssues,loadReportData, 
     loadDashboardData, availableBloomsDirectory,loadAvailableBlooms,
     pmiHistory, priorExecutiveStats, fetchPriorExecutiveStats, ttmTrendData,
-    fetchTtmTrendData
+    fetchTtmTrendData, topIssues, fetchTopIssues
   }
 })

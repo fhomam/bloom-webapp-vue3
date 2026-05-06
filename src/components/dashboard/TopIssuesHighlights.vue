@@ -28,7 +28,7 @@
             <span class="flex shrink-0 items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-colors">
               {{ index + 1 }}
             </span>
-            <span class="truncate" :title="getContextPath(issue)">{{ getContextPath(issue) }}</span>
+            <span class="truncate" :title="getContextPath(issue)">{{ issue.breadcrumb.topicTitle }}</span>
           </div>
           <div v-if="issue.rice?.impact?.value > 1" class="shrink-0 flex items-center gap-1 text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 uppercase tracking-widest">
             <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
@@ -48,7 +48,7 @@
         <div class="flex items-center justify-between pt-3 border-t border-slate-100 mt-auto">
           <div class="flex items-center gap-3">
             <div class="flex flex-col">
-              <span class="text-sm font-bold text-slate-800 leading-none">{{ formattedNumber(issue.interactions?.length || 0) }}</span>
+              <span class="text-sm font-bold text-slate-800 leading-none">{{ formattedNumber(issue.interactionsCount || 0) }}</span>
               <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">Interactions</span>
             </div>
           </div>
@@ -71,30 +71,33 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
+// omit from lodash-es is no longer needed here since the backend shapes the data!
 
 const route = useRoute()
 const bloomStore = useBloomStore()
 
 // --- DATA ENGINE ---
 const topIssues = computed(() => {
-  const all = bloomStore.allIssues || []
-  
-  const filtered = all.filter(issue => {
-    return issue.themes && issue.themes.some(t => t.themeId === 'top-issue')
-  })
-
-  const sorted = filtered.sort((a, b) => (b.interactions?.length || 0) - (a.interactions?.length || 0))
-
-  return sorted.slice(0, 4)
+  // The backend already filtered, flattened, and sorted by topIssueScore.
+  // All we need to do is grab the array from the store and slice the top 4 for the UI.
+  const tIssues = bloomStore.topIssues || []
+  return tIssues.slice(0, 4)
 })
 
 // --- HELPERS & FORMATTERS ---
 const getContextPath = (issue) => {
+  // Use the new breadcrumb object if it exists
+  if (issue.breadcrumb) {
+    const cat = issue.breadcrumb.categoryTitle
+    const top = issue.breadcrumb.topicTitle
+    if (cat && top) return `${cat} › ${top}`
+    if (cat) return cat
+  }
+  
+  // Safe fallback to raw taxo parsing
   if (!issue.taxo) return 'Unknown Area'
   const parts = issue.taxo.split(':')
-  const cat = issue.categoryTitle || parts[0]
-  const top = issue.topicTitle || parts[1]
-  return top ? `${cat} › ${top}` : cat
+  return parts.length > 1 ? `${parts[0]} › ${parts[1]}` : parts[0]
 }
 
 const formattedNumber = (num) => {
@@ -102,18 +105,14 @@ const formattedNumber = (num) => {
 }
 
 const getLatestInteractionDate = (issue) => {
-  if (!issue.interactions || issue.interactions.length === 0) return 'No interactions'
+  // Read directly from the new pre-calculated backend property
+  if (!issue.latestInteraction) return 'No interactions'
 
-  let latestMs = 0
-  issue.interactions.forEach(interaction => {
-    const timestamp = new Date(interaction.updatedAtSource || interaction.createdAt).getTime()
-    if (timestamp > latestMs) latestMs = timestamp
-  })
+  const dateObj = new Date(issue.latestInteraction)
+  
+  // Guard against invalid dates
+  if (isNaN(dateObj.getTime())) return 'Unknown date'
 
-  if (latestMs === 0) return 'Unknown date'
-
-  // Formats to "Latest: Oct 14" (or includes year if you prefer: { month: 'short', day: 'numeric', year: 'numeric' })
-  const dateObj = new Date(latestMs)
   return `Latest: ${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}`
 }
 

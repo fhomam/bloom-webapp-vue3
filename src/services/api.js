@@ -69,3 +69,8 @@ export async function getBloomTtmTrend(payload) {
    const response = await appClient.post(`/api/v1/get/bloom/ttm/trend`, payload);
    return response.data.value || response.data;
 }
+
+export async function getBloomTopIssues(payload) {
+   const response = await appClient.post(`/api/v1/get/bloom/top-issues`, payload);
+   return response.data.value || response.data;
+}

@@ -82,10 +82,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useUiStore } from '@/stores/ui'
+import { useBloomUrlState } from '@/composables/useBloomUrlState'
 import IssueCardStats from '@/components/bloom/IssueCardStats.vue'
-
-const ui = useUiStore()
 
 const props = defineProps({
   issue: { type: Object, required: true },
@@ -95,6 +93,7 @@ const props = defineProps({
 
 const router = useRouter()
 const route = useRoute()
+const urlState = useBloomUrlState()
 const isCopied = ref(false)
 
 const activeSource = computed(() => route.query.srcId || 'all')
@@ -119,9 +118,10 @@ const confidenceLabel = computed(() => {
   return 'Low'
 })
 
-// --- ACTION ROUTE (formerly "Open Silk Ticket") ---
-// Falls back to the current route if the issue has no silkSnapId, so RouterLink
-// never resolves to /t/undefined. When silkSnapId is missing, clicking is a no-op.
+// --- ACTION ROUTE ---
+// Falls back to current route when issue has no silkSnapId, so RouterLink
+// never resolves to /t/undefined. When silkSnapId is missing, clicking is
+// effectively a no-op.
 const actionRoute = computed(() => {
   if (props.issue.silkSnapId) return `/t/${props.issue.silkSnapId}`
   return route.fullPath
@@ -145,25 +145,23 @@ const getTopicTaxo = computed(() => {
 })
 
 const isTaxoActive = (taxo) => {
-  if (!taxo || !route.query.taxo) return false
-  return route.query.taxo === taxo
+  if (!taxo || !urlState.taxo.value) return false
+  return urlState.taxo.value === taxo
 }
 
 const isThemeActive = (themeId) => route.query.theme === themeId
 
+// Toggle-off behavior preserved: clicking the active breadcrumb clears
+// the taxo selection. openTaxonomyWith always sets, so we branch here.
+// Note: when clearing taxo we only call setTaxo(null) — we don't touch
+// the panel, so whatever was open stays open. Reselecting via
+// openTaxonomyWith always switches to the taxonomy panel.
 const toggleTaxo = (taxo) => {
   if (!taxo) return
-
-  if (route.query.taxo === taxo) {
-    const newQuery = { ...route.query }
-    delete newQuery.taxo
-    router.push({ query: newQuery })
+  if (urlState.taxo.value === taxo) {
+    urlState.setTaxo(null)
   } else {
-    ui.navigateWithGrace('taxonomy', { 
-      taxo,
-      exploreIssue: null, 
-      exploreEmotion: null 
-    }, route, router)
+    urlState.openTaxonomyWith(taxo)
   }
 }
 

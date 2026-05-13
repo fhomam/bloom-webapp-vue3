@@ -126,12 +126,14 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useUiStore } from '@/stores/ui'
 import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
+import { useBloomUrlState } from '@/composables/useBloomUrlState'
 import Dropdown from '@/components/common/Dropdown.vue'
 import * as api from '@/services/api' 
 
 const route = useRoute()
 const router = useRouter()
 const bloomStore = useBloomStore()
+const urlState = useBloomUrlState()
 
 const ui = useUiStore()
 const ribbonRef = ref(null)
@@ -153,8 +155,11 @@ const formatSourceName = (key) => {
 }
 
 // --- EXPLORATION BINDINGS ---
+// Ribbon emojis = "zoom out to the full report, filter by this emotion".
+// The composable's helper clears taxo automatically — no specific issue,
+// just the cross-report emotion view.
 const openEmotionExplorer = (metric) => {
-  ui.navigateWithGrace('interactions', { exploreEmotion: metric }, route, router)
+  urlState.openInteractionsForEmotion(metric)
 }
 
 // --- DYNAMIC BLOOM DATA ---
@@ -303,14 +308,12 @@ const activeSource = computed({
     if (val === 'all') delete query.srcId
     else query.srcId = val
     
-    // Safety check: Wipe out contextual filters when source changes
     delete query.country
     delete query.lang
     router.push({ query })
   }
 })
 
-// Secondary Locale Router
 const activeSecondary = computed({
   get: () => {
     if (activeSource.value === 'apple_app_store') return route.query.country || 'all'

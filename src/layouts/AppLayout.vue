@@ -24,7 +24,7 @@
           :class="[
             'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
             (route.name === 'home' || route.name === 'Home') ? 'bg-slate-800 text-white' : '',
-            ui.isLeftCollapsed ? 'justify-center' : '' // 🔥 Centers icon when collapsed
+            ui.isLeftCollapsed ? 'justify-center' : ''
           ]"
         >
           <HomeIcon class="w-5 h-5 shrink-0" />
@@ -162,7 +162,7 @@
         <div class="flex items-center gap-4">
           <button 
             v-if="ui.rightTabs.length > 0 && !isGlobalView && route.name === 'BloomReport'" 
-            @click="ui.isRightOpen = !ui.isRightOpen" 
+            @click="togglePanel" 
             :class="['p-1.5 rounded-md transition-colors', ui.isRightOpen ? 'bg-bloom-primary text-white' : 'text-slate-400 hover:bg-slate-100']"
           >
             <PanelIcon class="w-5 h-5" />
@@ -188,7 +188,7 @@
         >
           <div class="w-80 h-full flex flex-col bg-white">
             <div class="flex border-b border-slate-200 shrink-0 overflow-x-auto hide-scrollbar">
-              <button v-for="tab in ui.rightTabs" :key="tab.id" @click="ui.activeRightTab = tab.id" :class="['flex-1 min-w-[120px] py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2', ui.activeRightTab === tab.id ? 'text-bloom-primary border-b-2 border-bloom-primary' : 'text-slate-500 hover:text-slate-800']">
+              <button v-for="tab in ui.rightTabs" :key="tab.id" @click="selectTab(tab.id)" :class="['flex-1 min-w-[120px] py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2', ui.activeRightTab === tab.id ? 'text-bloom-primary border-b-2 border-bloom-primary' : 'text-slate-500 hover:text-slate-800']">
                 <span v-if="tab.icon" v-html="tab.icon" class="w-4 h-4"></span>
                 {{ tab.label }}
               </button>
@@ -220,6 +220,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUiStore } from '@/stores/ui'
 import { useBloomStore } from '@/stores/bloom'
 import { useAppStore } from '@/stores/app'
+import { useBloomUrlState } from '@/composables/useBloomUrlState'
 import Dropdown from '@/components/common/Dropdown.vue'
 
 // Extracted Icons
@@ -246,6 +247,11 @@ const appStore = useAppStore()
 const route = useRoute()
 const router = useRouter()
 
+// URL state — only meaningful on BloomReport pages, but safe to call here
+// since useBloomUrlState just reads route.query and doesn't assume anything
+// about the current route.
+const urlState = useBloomUrlState()
+
 const availableOfferings = ref([])
 const latestReportRoute = ref('/') 
 const fullBloomsData = ref({}) 
@@ -262,18 +268,38 @@ const isSidebarEffectivelyOpen = computed(() => {
 
 const getRoute = (path) => appStore.orgXid ? `/${appStore.orgXid}/${path}` : ''
 
-// -- USER MENU RESPONSIVE BEHAVIORS--
+// ====================================================================
+// HEADER PANEL TOGGLE
+// Going through the URL composable keeps history clean: closing the
+// sidebar writes the URL (no panel param), which lets lastVisitedMap
+// capture the closed state and keeps back/forward behavior correct.
+// ====================================================================
+const togglePanel = () => {
+  if (urlState.panel.value) {
+    urlState.closePanel()
+  } else {
+    // Default to taxonomy when opening from a fully-closed state.
+    urlState.setPanel('taxonomy')
+  }
+}
+
+// Tab click — switches between taxonomy and interactions via the URL.
+// This replaces the previous direct `ui.activeRightTab = tab.id`, which
+// would desync from the URL.
+const selectTab = (tabId) => {
+  urlState.setPanel(tabId)
+}
+
+// --- USER MENU RESPONSIVE BEHAVIORS ---
 let windowWidth = window.innerWidth
 
 const handleResize = () => {
   const newWidth = window.innerWidth
   
-  // 1. Close User Menu if crossing the breakpoint
   if ((windowWidth >= 768 && newWidth < 768) || (windowWidth < 768 && newWidth >= 768)) {
     if (isUserMenuOpen.value) isUserMenuOpen.value = false
   }
   
-  // 2. Automatically collapse the left sidebar when resizing below 768px (md breakpoint)
   if (windowWidth >= 768 && newWidth < 768) {
     ui.isLeftCollapsed = true
   }
@@ -286,40 +312,37 @@ watch(() => ui.isLeftCollapsed, () => {
 })
 
 const userName = computed(() => {
-  const profile = appStore.session?.principal?.profile;
-  if (!profile) return 'User';
+  const profile = appStore.session?.principal?.profile
+  if (!profile) return 'User'
   
-  const first = profile.givenName || '';
-  const last = profile.familyName || '';
-  const full = `${first} ${last}`.trim();
+  const first = profile.givenName || ''
+  const last = profile.familyName || ''
+  const full = `${first} ${last}`.trim()
 
-  // Prioritize combined First + Last, fallback to displayName
-  return full || profile.displayName || 'User';
-});
+  return full || profile.displayName || 'User'
+})
 
 const userEmail = computed(() => {
-  const xids = appStore.session?.principal?.xids || [];
-  const emailObj = xids.find(x => x.type === 'email');
-  return emailObj ? emailObj.value : 'No email provided';
-});
+  const xids = appStore.session?.principal?.xids || []
+  const emailObj = xids.find(x => x.type === 'email')
+  return emailObj ? emailObj.value : 'No email provided'
+})
 
 const userInitials = computed(() => {
-  const name = userName.value;
-  if (name === 'User') return 'U';
+  const name = userName.value
+  if (name === 'User') return 'U'
   
-  // Grab the first letter of the first two words (e.g., "Platform Admin" -> "PA")
-  const parts = name.split(' ').filter(Boolean);
+  const parts = name.split(' ').filter(Boolean)
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase()
   }
-  // Fallback to first two letters of a single word
-  return name.substring(0, 2).toUpperCase();
-});
+  return name.substring(0, 2).toUpperCase()
+})
 
 const handleLogout = () => {
-  isUserMenuOpen.value = false;
-  window.location.href = `${import.meta.env.VITE_AUTH_URL}/logout`;
-};
+  isUserMenuOpen.value = false
+  window.location.href = `${import.meta.env.VITE_AUTH_URL}/logout`
+}
 
 watch(
   () => route.fullPath,
@@ -327,7 +350,6 @@ watch(
     if (route.name === 'BloomDashboard') ui.lastDashboardRoute = route.fullPath
     if (route.name === 'BloomReport') ui.lastReportRoute = route.fullPath
 
-    // Close the sidebar on mobile automatically after any navigation
     if (window.innerWidth < 768) {
       ui.isLeftCollapsed = true
     }
@@ -368,7 +390,6 @@ const activeOffering = computed({
   set: (newXid) => {
     if (!newXid || newXid === route.params.offeringXid) return
     
-    // 1. Initialize from current route (these will be undefined on Home view)
     let targetType = route.params.periodType
     let targetId = route.params.periodId
     let targetOfferingType = route.params.offeringType
@@ -381,12 +402,10 @@ const activeOffering = computed({
     const history = lastVisitedMap.value[newXid]?.[viewType]
     const offeringData = fullBloomsData.value[newXid]
 
-    // ALWAYS ensure we have the offeringType. If it's missing from the URL, grab it from our data dictionary.
     if (!targetOfferingType && offeringData) {
       targetOfferingType = offeringData.details?.offeringType || 'app'
     }
     
-    // 2. Resolve the Period ID / Type
     if (history) {
       targetType = history.pType
       targetId = history.pId
@@ -400,7 +419,6 @@ const activeOffering = computed({
       }
     }
 
-    // 3. Construct the router parameters
     const newParams = { ...route.params }
     newParams.offeringXid = newXid
     if (targetOfferingType) newParams.offeringType = targetOfferingType
@@ -408,7 +426,6 @@ const activeOffering = computed({
     if (targetId) newParams.periodId = targetId
     if (!newParams.orgXid) newParams.orgXid = appStore.orgXid 
 
-    // 4. Safely push!
     router.push({
       name: targetRouteName,
       params: newParams,
@@ -469,7 +486,6 @@ const reportLink = computed(() => {
     const finalOrg = route.params.orgXid || appStore.orgXid
     const finalOType = route.params.offeringType
     
-    // 🔥 FIX: Use the safe getRoute helper for the fallback
     if (!finalOrg || !finalOType || !history.pType || !history.pId) return getRoute('home')
 
     return {

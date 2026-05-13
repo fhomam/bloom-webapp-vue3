@@ -77,10 +77,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch, markRaw } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
 import { useUiStore } from '@/stores/ui'
+import { useBloomUrlState } from '@/composables/useBloomUrlState'
 import { debounce } from 'lodash-es'
 
 import ReportRibbon from '@/components/bloom/ReportRibbon.vue'
@@ -92,30 +93,39 @@ const route = useRoute()
 const router = useRouter()
 const bloomStore = useBloomStore()
 const ui = useUiStore()
+const urlState = useBloomUrlState()
 
 // --- UTILITIES ---
 const formatNumber = (num) => (num || 0).toLocaleString('en-US')
-const appName = computed(() => bloomStore.offeringContext?.name || 'Loading...')
 const safeJoyScore = computed(() => {
-  const score = bloomStore.joyStats?.score;
-  return (typeof score === 'number' ? score : 0).toFixed(2);
+  const score = bloomStore.joyStats?.score
+  return (typeof score === 'number' ? score : 0).toFixed(2)
 })
 
-// Dynamically converts whatever periodId is in the URL (e.g. '2026q2') to uppercase
 const activePeriodLabel = computed(() => {
   const pId = route.params.periodId
   return pId ? pId.toUpperCase() : ''
 })
 
 // --- FILTER & SEARCH LOGIC ---
-// 1. Isolate the "real" report filters from the UI sidebar parameters
+// UI-only params that should NOT trigger a data reload when they change.
+// `taxo` is real filtering (changes the main list). `forIssue`, `panel`,
+// `emotion`, `hl` are all panel-state.
+const UI_ONLY_QUERY_KEYS = [
+  'panel',
+  'emotion',
+  'hl',
+  'forIssue',
+  'exploreIssue',   // legacy — gets migrated on mount
+  'exploreEmotion', // legacy — gets migrated on mount
+]
+
 const filterSignature = computed(() => {
-  const { exploreIssue, exploreEmotion, ...realFilters } = route.query
-  // Stringify ensures the computed property only registers a change if the actual values change!
+  const realFilters = { ...route.query }
+  UI_ONLY_QUERY_KEYS.forEach((k) => delete realFilters[k])
   return JSON.stringify(realFilters)
 })
 
-// 2. The main feed now ONLY recalculates when the filterSignature string changes
 const filteredIssues = computed(() => {
   const filters = JSON.parse(filterSignature.value)
   return bloomStore.getFilteredAndSortedIssues(filters)
@@ -156,11 +166,8 @@ const sortOptions = [
   { id: 'newest-reviews', label: 'Newest' }
 ]
 
-// --- DYNAMIC THEME DROPDOWN ---
 const themeOptions = computed(() => {
   const baseOptions = [{ id: 'all', label: 'All Themes' }]
-  
-  // 1. Scan all raw issues in the current bloom to see which themes actually exist
   const activeThemeIds = new Set()
   
   if (bloomStore.allIssues) {
@@ -171,25 +178,18 @@ const themeOptions = computed(() => {
     })
   }
 
-  // 2. Filter the global themes list down to ONLY the ones present in this report
   const availableThemes = bloomStore.themes?.filter(t => activeThemeIds.has(t.themeId)) || []
-
-  // 3. Map them to the Dropdown format
-  const dynamicThemes = availableThemes.map(t => ({ 
-    id: t.themeId, 
-    label: t.name 
-  }))
+  const dynamicThemes = availableThemes.map(t => ({ id: t.themeId, label: t.name }))
 
   return [...baseOptions, ...dynamicThemes]
 })
 
-// --- SCROLL TRACKING (Brute-Force Native Listener) ---
+// --- SCROLL TRACKING ---
 const isScrolled = ref(false)
 let scrollContainer = null
 
 const handleScroll = () => {
   if (scrollContainer) {
-    // Trigger EXACTLY when the dynamic ribbon scrolls out of view (fallback to 150 if 0)
     const threshold = ui.reportRibbonHeight > 0 ? ui.reportRibbonHeight : 150
     isScrolled.value = scrollContainer.scrollTop > threshold
   }
@@ -197,15 +197,14 @@ const handleScroll = () => {
 
 // --- DYNAMIC DATA LOADING ---
 const loadDataIfNeeded = async () => {
-  // If the core routing params are missing, abort the fetch entirely
   if (!route.params.offeringXid || !route.params.periodId) return
 
   try {
     await bloomStore.loadReportData({ 
-      orgId: route.params.orgXid,       // No hardcoded fallback
+      orgId: route.params.orgXid,
       offeringXid: route.params.offeringXid, 
-      bloomType: route.params.periodType, // No hardcoded fallback
-      bloomKey: route.params.periodId,    // No hardcoded fallback
+      bloomType: route.params.periodType,
+      bloomKey: route.params.periodId,
       filters: route.query
     })
   } catch (err) {
@@ -213,85 +212,89 @@ const loadDataIfNeeded = async () => {
   }
 }
 
-// --- SIDEBAR & TAB MANAGEMENT ---
-// Pass `true` during onMounted so it knows to delay the slide-in!
-const updateSidebarState = (isInitialMount = false) => {
-  const hasExplore = !!route.query.exploreIssue || !!route.query.exploreEmotion
-  const hasTaxo = !!route.query.taxo
+// ====================================================================
+// LEGACY_URL_MIGRATION
+// Map the old URL shape (exploreIssue / exploreEmotion) to the new
+// one (forIssue + panel + emotion + hl) on entry. One-shot rewrite via
+// router.replace, then the rest of the code only reads canonical
+// params. Safe to remove after external links have aged out.
+//
+//   exploreIssue=<taxo>    → forIssue=<taxo> + panel=interactions + hl=issue
+//   exploreEmotion=<m>     → panel=interactions + emotion=<m>
+//
+// Note: exploreIssue maps to forIssue (NOT taxo) — old "peek into this
+// issue's reviews" links should land in the new "scope the panel
+// without filtering the main list" view, matching current behavior.
+// ====================================================================
+const migrateLegacyUrlParams = () => {
+  const q = route.query
+  const hasLegacy = q.exploreIssue || q.exploreEmotion
+  if (!hasLegacy) return
 
-  const tabs = [
-    { 
-      id: 'taxonomy', 
-      label: 'Taxonomy', 
-      icon: `<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="3"></circle><circle cx="19" cy="5" r="3"></circle><circle cx="19" cy="19" r="3"></circle><path d="M8 12h4"></path><path d="M12 5v14"></path><path d="M12 5h4"></path><path d="M12 19h4"></path></svg>`
-    },
-    {
-      id: 'interactions',
-      label: 'Interactions',
-      icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>`
-    }
-  ]
+  const next = { ...q }
 
-  ui.rightTabs = tabs
+  if (next.exploreIssue) {
+    // Legacy exploreIssue historically used dash-form; normalize to colons.
+    next.forIssue = String(next.exploreIssue).replaceAll('-', ':')
+    next.panel = 'interactions'
+    next.hl = 'issue'
+    delete next.exploreIssue
+  }
 
-  // 1. Determine URL Precedence
-  let targetTab = hasExplore ? 'interactions' : (hasTaxo ? 'taxonomy' : 'taxonomy')
+  if (next.exploreEmotion) {
+    next.panel = 'interactions'
+    next.emotion = next.exploreEmotion
+    delete next.exploreEmotion
+    // If both legacy params were present, the forIssue branch above
+    // already set hl=issue. Emotion supersedes it (mutual exclusion).
+    if (next.hl === 'issue') delete next.hl
+  }
 
-  if (isInitialMount) {
-    // 2. DIRECT URL LOAD: Wait for the main dashboard to finish rendering, then slide in gracefully.
-    if (hasExplore || hasTaxo) {
-      setTimeout(() => {
-        ui.activeRightTab = targetTab
-        ui.isRightOpen = true
-      }, 400) // This 400ms delay completely cures the direct-URL boot hiccup
-    } else {
-      ui.activeRightTab = targetTab
-    }
+  router.replace({ query: next })
+}
+
+// ====================================================================
+// SIDEBAR STATE — DERIVED FROM URL
+// The URL panel param is the source of truth. ui.isRightOpen and
+// ui.activeRightTab follow it.
+// ====================================================================
+const sidebarTabs = [
+  { 
+    id: 'taxonomy', 
+    label: 'Taxonomy', 
+    icon: `<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="3"></circle><circle cx="19" cy="5" r="3"></circle><circle cx="19" cy="19" r="3"></circle><path d="M8 12h4"></path><path d="M12 5v14"></path><path d="M12 5h4"></path><path d="M12 19h4"></path></svg>`
+  },
+  {
+    id: 'interactions',
+    label: 'Interactions',
+    icon: `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>`
+  }
+]
+
+const syncSidebarFromUrl = () => {
+  ui.rightTabs = sidebarTabs
+
+  const panelValue = urlState.panel.value
+  if (panelValue) {
+    ui.activeRightTab = panelValue
+    ui.isRightOpen = true
   } else {
-    // 3. NORMAL NAVIGATION: Just sync the active tab based on the URL.
-    // Notice we DO NOT touch ui.isRightOpen here. navigateWithGrace handles opening.
-    // This allows the "Close" button to actually keep the sidebar closed!
-    ui.activeRightTab = targetTab
+    ui.isRightOpen = false
   }
 }
 
-// --- LIFECYCLE & WATCHERS ---
+// --- WATCHERS ---
 
-// Watch the route parameters AND the query parameters. 
-// Watcher 1: Data Engine
-// ONLY fires if the app, period, or actual report filters change. 
-// Completely ignores exploreIssue/exploreEmotion!
+// Watcher 1: Data Engine — real route + filter changes only
 watch(
   () => [route.params.offeringXid, route.params.periodId, filterSignature.value], 
-  () => { 
-    loadDataIfNeeded()
-  }
+  () => loadDataIfNeeded()
 )
 
-// Watcher 2: Sidebar UI Engine
+// Watcher 2: URL → UI State sync
 watch(
-  () => [route.query.exploreIssue, route.query.exploreEmotion, route.query.taxo],
-  ([newIssue, newEmotion, newTaxo], [oldIssue, oldEmotion, oldTaxo]) => {
-    
-    const issueChanged = newIssue !== oldIssue
-    const emotionChanged = newEmotion !== oldEmotion
-    const taxoChanged = newTaxo !== oldTaxo
-
-    // 1. If they clicked an Issue or Emotion, open the Interactions tab
-    if (issueChanged || emotionChanged) {
-      if (newIssue || newEmotion) {
-        ui.activeRightTab = 'interactions'
-        ui.isRightOpen = true
-      }
-    } 
-    // 2. If they clicked a Taxonomy item, open the Taxonomy tab
-    else if (taxoChanged) {
-      if (newTaxo) {
-        ui.activeRightTab = 'taxonomy'
-        ui.isRightOpen = true
-      }
-    }
-  }
+  () => urlState.panel.value,
+  () => syncSidebarFromUrl()
 )
 
 // --- MOUNT ROUTINE ---
@@ -301,43 +304,38 @@ onMounted(() => {
     scrollContainer.addEventListener('scroll', handleScroll)
     handleScroll()
   }
-  
+
+  // 1. Migrate any legacy URL params before initial sync.
+  migrateLegacyUrlParams()
+
+  // 2. Kick off data load.
   loadDataIfNeeded()
 
-  // True = Initial mount (Triggers the 400ms delayed smooth open)
-  updateSidebarState(true) 
+  // 3. Sidebar state — derive from URL. On cold load with an active
+  //    panel, delay the slide-in by 400ms so the main view paints
+  //    first. On warm navigations, no delay.
+  ui.rightTabs = sidebarTabs
+  const hasPanelOnEntry = !!urlState.panel.value
 
-  // If Pinia already has the sidebar open from a previous visit, skip the animation delay!
-  if (ui.isRightOpen) {
-    updateSidebarState(false) // Run without the initialMount delay
+  if (hasPanelOnEntry && !ui.isRightOpen) {
+    setTimeout(() => syncSidebarFromUrl(), 400)
   } else {
-    updateSidebarState(true)  // Run with the 400ms boot sequence
-  }  
+    syncSidebarFromUrl()
+  }
 })
 
 onUnmounted(() => {
-  // 1. Clean up the listener so we don't cause memory leaks when routing away
   if (scrollContainer) {
     scrollContainer.removeEventListener('scroll', handleScroll)
   }
-
-  // 2. Clean up the sidebar when the user leaves the report!
   ui.configureRightSidebar([], '', false)
 })
 </script>
 
 <style scoped>
-/* PURE CSS BLEED FIX */
 .anti-bleed-header {
-  /* 1. Forces a solid, impenetrable white background plate */
   background-color: #ffffff;
-  
-  /* 2. Forces the browser to render this entire header on its own dedicated GPU layer. 
-        Scrolling elements below physically cannot clip or bleed through a composited layer. */
   transform: translate3d(0, 0, 0);
-  
-  /* 3. Acts as "grout". A solid 1px shadow with zero blur fills in any microscopic 
-        sub-pixel gaps between the DOM elements inside the header. */
   box-shadow: 0 0 0 1px #ffffff;
 }
 </style>

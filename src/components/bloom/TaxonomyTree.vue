@@ -10,7 +10,7 @@
           Report Categories
         </div>
       </div>
-      <button @click="ui.isRightOpen = false" class="p-2 -mr-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200/50 rounded-full transition-colors shrink-0">
+      <button @click="urlState.closePanel" class="p-2 -mr-2 text-slate-400 hover:text-slate-800 hover:bg-slate-200/50 rounded-full transition-colors shrink-0">
         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
     </div>
@@ -24,7 +24,7 @@
       <div v-for="category in treeData" :key="category.id" class="mb-1.5">
         
         <div 
-          :id="'node-' + category.taxo.replaceAll(':', '-')"
+          :id="toNodeId(category.taxo)"
           @click="selectNode(category.taxo)"
           :class="[
             'group flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition-colors',
@@ -52,7 +52,7 @@
           <div v-for="topic in category.topics" :key="topic.id">
             
             <div 
-              :id="'node-' + topic.taxo.replaceAll(':', '-')"
+              :id="toNodeId(topic.taxo)"
               @click="selectNode(topic.taxo)"
               :class="[
                 'group flex items-center justify-between px-2.5 py-1.5 rounded-md cursor-pointer transition-colors',
@@ -80,7 +80,7 @@
               <div 
                 v-for="issue in topic.issues" 
                 :key="issue.id"
-                :id="'node-' + issue.taxo.replaceAll(':', '-')"
+                :id="toNodeId(issue.taxo)"
                 @click="selectNode(issue.taxo)"
                 :class="[
                   'group flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer transition-colors',
@@ -106,17 +106,16 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
-import { useUiStore } from '@/stores/ui'
+import { useBloomUrlState } from '@/composables/useBloomUrlState'
 
-const route = useRoute()
-const router = useRouter()
 const bloomStore = useBloomStore()
-const ui = useUiStore() // Imported for the close button
+const urlState = useBloomUrlState()
 
 const formatNumber = (num) => Number(num || 0).toLocaleString('en-US')
 
+// DOM ids use a CSS-safe separator (colons would parse as pseudo-class in
+// querySelector). Local to this file — URLs and route.query stay colon-form.
 const toNodeId = (taxo) => `node-${taxo.replaceAll(':', '__')}`
 
 const treeData = computed(() => {
@@ -149,24 +148,26 @@ const toggleExpand = (taxo) => {
   expandedNodes.value = newSet
 }
 
-const activeTaxo = computed(() => route.query.taxo || null)
-
 const isActive = (taxo) => {
-  if (!activeTaxo.value || !taxo) return false
-  return activeTaxo.value === taxo || activeTaxo.value.startsWith(`${taxo}:`)
+  if (!urlState.taxo.value || !taxo) return false
+  return urlState.taxo.value === taxo || urlState.taxo.value.startsWith(`${taxo}:`)
 }
 
+// Click toggles taxo: reclicking the active node clears it. The panel
+// is already taxonomy here (this component only renders inside it), so
+// we don't need to touch panel state — just taxo.
 const selectNode = (taxo) => {
-  const newQuery = { ...route.query }
-  if (newQuery.taxo === taxo) delete newQuery.taxo
-  else newQuery.taxo = taxo
-  router.push({ query: newQuery })
+  if (urlState.taxo.value === taxo) {
+    urlState.setTaxo(null)
+  } else {
+    urlState.setTaxo(taxo)
+  }
 }
 
 // --- AUTO-SCROLL LOGIC ---
-const scrollToNode = async (taxoId) => {
+const scrollToNode = async (taxo) => {
   await nextTick() 
-  const el = document.getElementById(`node-${taxoId}`)
+  const el = document.getElementById(toNodeId(taxo))
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
@@ -175,8 +176,12 @@ const scrollToNode = async (taxoId) => {
 watch(() => urlState.taxo.value, (newTaxo) => {
   if (newTaxo) {
     const parts = newTaxo.split(':')
-    if (parts.length > 0) expandedNodes.value.add(parts[0])
+    
+    // Auto-expand parents
+    if (parts.length > 0) expandedNodes.value.add(parts[0]) 
     if (parts.length > 1) expandedNodes.value.add(`${parts[0]}:${parts[1]}`)
+    
+    // Auto-scroll to the exact node
     scrollToNode(newTaxo)
   }
 }, { immediate: true })

@@ -62,16 +62,15 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useUiStore } from '@/stores/ui'
+import { useRoute } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
+import { useBloomUrlState } from '@/composables/useBloomUrlState'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 
-// Register ECharts modules globally for this component (Added MarkLineComponent)
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, MarkLineComponent])
 
 const props = defineProps({
@@ -79,20 +78,15 @@ const props = defineProps({
   activeSource: { type: String, default: 'all' }
 })
 
-const ui = useUiStore()
 const bloomStore = useBloomStore()
-const router = useRouter()
 const route = useRoute()
+const urlState = useBloomUrlState()
 
-// --- FORMATTERS & UTILS ---
 const formatNumber = (num) => {
   if (num === undefined || num === null) return '0'
   return Number(num).toLocaleString('en-US')
 }
 
-// ---------------------------------------------------------
-// COLOR THEME SWAPPER
-// ---------------------------------------------------------
 const activeChartColorName = 'primary' 
 const CHART_COLORS = {
   primary: '#9A3356', 
@@ -103,10 +97,6 @@ const CHART_COLORS = {
 }
 const activeChartColor = computed(() => CHART_COLORS[activeChartColorName] || CHART_COLORS.primary)
 
-// ---------------------------------------------------------
-// TIME MACHINE ANCHOR & STATS LOGIC
-// ---------------------------------------------------------
-// 🔥 FIX 1: Clamp anchor to "Today" so ongoing periods know where the future starts
 const anchorMs = computed(() => {
   let targetMs = Date.now()
   if (bloomStore.ttmTrendData?.metadata?.anchorDate) {
@@ -121,7 +111,6 @@ const issueStats = computed(() => {
 
   if (props.issue.interactions && props.issue.interactions.length > 0) {
     props.issue.interactions.forEach(interaction => {
-      // Strictly use updatedAtSource (or snake_case backend equivalent)
       const dateStr = interaction.updatedAtSource || interaction.updated_at_source
       if (dateStr) {
         const timestamp = new Date(dateStr).getTime()
@@ -157,9 +146,6 @@ const exactDate = computed(() => {
   }).format(new Date(issueStats.value.latestTimestamp))
 })
 
-// ---------------------------------------------------------
-// LOCALE & REGION LOGIC
-// ---------------------------------------------------------
 const generateLabel = (dataArray) => {
   if (dataArray.length === 0) return 'N/A'
   const topTwo = dataArray.slice(0, 2).map(c => c[0]).join(', ')
@@ -201,9 +187,6 @@ const fullCountryTooltip = computed(() => generateTooltip(appleCountries.value))
 const topLangsLabel = computed(() => generateLabel(googleLangs.value))
 const fullLangTooltip = computed(() => generateTooltip(googleLangs.value))
 
-// ---------------------------------------------------------
-// PERIOD SPARKLINE LOGIC
-// ---------------------------------------------------------
 const getBloomRange = (periodKey) => {
   if (!periodKey) return null
   const regex = /^(\d{4})(?:-(\d{2})(?:-(\d{2})(w)?)?|Q(\d)|-W(\d{1,2}))?$/i
@@ -304,22 +287,19 @@ const sparklineOption = computed(() => {
 
     categories = buckets.map(b => b.key)
     
-    // Pre-calculate if we have future bars, and exactly which key is "Today"
     hasFutureBars = buckets.some(b => b.startMs > currentAnchor)
     if (hasFutureBars) {
-      // Find the very last bucket that is NOT in the future
       const todayBucket = [...buckets].reverse().find(b => b.startMs <= currentAnchor)
       if (todayBucket) todayKey = todayBucket.key
     }
     
-    // Apply the green color specifically to the "Today" bar
     historyData = buckets.map(b => {
       const isFuture = b.startMs > currentAnchor
       const isToday = b.key === todayKey
 
       let barColor = activeChartColor.value
       if (isFuture) barColor = '#f1f5f9'
-      else if (isToday) barColor = '#8a9a33' // Emerald-500 Green
+      else if (isToday) barColor = '#8a9a33'
 
       return {
         value: b.count,
@@ -344,15 +324,14 @@ const sparklineOption = computed(() => {
     barWidth: '70%'
   }
 
-  // 🔥 Inject the "Now" indicator with text
   if (hasFutureBars && todayKey) {
     seriesConfig.markLine = {
       symbol: ['none', 'none'],
       silent: true,
       label: { 
         show: true, 
-        position: 'end', // Places it at the top of the line
-        formatter: 'Today', // The text to display
+        position: 'end',
+        formatter: 'Today',
         color: '#8a9a33', 
         fontSize: 9,
         fontWeight: 'bold'
@@ -368,7 +347,6 @@ const sparklineOption = computed(() => {
   }
 
   return {
-    // Increased 'top' from 5 to 15 to make room for the "Now" text
     grid: { top: 15, right: 0, bottom: 0, left: 0 }, 
     xAxis: { 
       type: 'category', 
@@ -387,8 +365,11 @@ const sparklineOption = computed(() => {
 })
 
 // --- ACTIONS ---
+// "Show me this issue's interactions in the side panel — without
+// filtering the main report list." The helper writes forIssue (panel
+// scope only), not taxo. So the main list stays as the user had it.
 const openExplorer = () => {
   if (!props.issue.taxo) return
-  ui.navigateWithGrace('interactions', { exploreIssue: props.issue.taxo }, route, router)
+  urlState.openInteractionsForIssue(props.issue.taxo)
 }
 </script>

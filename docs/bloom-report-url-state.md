@@ -1,62 +1,77 @@
 # Bloom Report — URL State Contract
 
-> **Audience:** anyone touching `BloomReportView.vue`, `InteractionExplorer.vue`,
-> `TaxonomyTree.vue`, `ReportRibbon.vue`, `IssueCard.vue`, or `IssueCardStats.vue`.
+> **Audience:** anyone touching `BloomReportView.vue`,
+> `InteractionExplorer.vue`, `TaxonomyTree.vue`, `ReportRibbon.vue`,
+> `IssueCard.vue`, or `IssueCardStats.vue`.
 >
-> **TL;DR:** The URL is the single source of truth for what's selected and which
-> sidebar (if any) is open. Components read from the URL via the
-> `useBloomUrlState` composable. Don't reach into `ui.activeRightTab` /
-> `ui.isRightOpen` to drive what the user sees — those should be derived from
-> the URL.
+> **TL;DR:** The URL is the single source of truth for what's selected
+> and which sidebar (if any) is open. Components read from the URL via
+> the `useBloomUrlState` composable. Don't reach into
+> `ui.activeRightTab` / `ui.isRightOpen` to drive what the user sees —
+> those should be derived from the URL.
 
 ---
 
 ## Why this exists
 
-The Bloom report previously coupled three concerns into overlapping URL params
-(`taxo`, `exploreIssue`, `exploreEmotion`) plus Pinia store flags
-(`ui.activeRightTab`, `ui.isRightOpen`). That coupling caused:
+The Bloom report previously coupled multiple concerns into overlapping
+URL params plus Pinia store flags. That coupling caused:
 
-- The sidebar reopening on every back/forward, and being captured as "open"
-  in `lastVisitedMap` even after the user closed it manually (because the
-  manual toggle didn't write to the URL at all).
-- Cold loads (direct links with params) sometimes failing to filter the
-  interactions list because the issue lookup ran before `bloomStore.allIssues`
-  populated.
-- Three params doing partially overlapping jobs, with precedence rules in
-  `updateSidebarState` and `navigateWithGrace` that were hard to reason about.
+- The sidebar reopening on every back/forward and being captured as
+  "open" in `lastVisitedMap` even after the user closed it manually.
+- Cold loads sometimes failing to filter the interactions list because
+  data arrived after the watcher had already run.
+- One param (`taxo`) doing two distinct jobs — filtering the main
+  report list AND scoping the side panel — which collided when users
+  wanted one but not the other.
 
-The new model separates **selection scope** from **UI surface** from
-**filter/highlight modifiers**, giving each its own param.
+The new model separates each concern into its own param.
 
 ---
 
-## The three params
+## The params
 
-### `taxo` — the selection scope
+### `taxo` — the main report list filter
 
-The currently selected taxonomy node. Independent of any panel — setting `taxo`
-just filters the main report list and highlights the tree. It does NOT open
-any sidebar by itself.
+The currently selected taxonomy node. Filters the main report's
+issue/packet list and highlights the tree.
 
-**Format:** `L1` | `L1:L2` | `L1:L2:L3` (category, topic, issue depth),
-colon-delimited. Colons are RFC-3986-legal in query string values and pass
-through vue-router unchanged, so no encoding/decoding is needed.
+**Format:** `L1` | `L1:L2` | `L1:L2:L3` (category, topic, issue
+depth), colon-delimited. Colons are RFC-3986-legal in query string
+values and pass through vue-router unchanged.
 
 **Examples**
 
-- `?taxo=account-access` — category-level selection
-- `?taxo=account-access:sign-in` — topic-level
-- `?taxo=account-access:sign-in:login-fails` — specific packet (issue-level)
+- `?taxo=account_access` — category-level
+- `?taxo=account_access:sign_in` — topic-level
+- `?taxo=account_access:sign_in:login_fails` — specific packet
 
-When `taxo` is issue-level (three segments), the Interactions panel resolves
-a target issue and loads its specific interactions. At broader levels, the
-Interactions panel falls back to its broader scope.
+Changing `taxo` clears `forIssue` (see below) — the user's intent to
+refocus the main view supersedes any pending panel-only peek.
+
+### `forIssue` — the panel's issue scope (without filtering the main list)
+
+A specific issue's taxonomy address used to scope the interactions
+panel WITHOUT touching the main list filter.
+
+**Use case:** the user is scrolling through the main report's
+packets. They click the "Reviews" button on one packet to peek at
+its interactions in the side panel. They don't want the main list
+to collapse to that single issue while doing so.
+
+**Format:** must be issue-level (L1:L2:L3). Shallower values are
+ignored on read — there's no specific issue context for issue-bits
+highlight at category or topic depth.
+
+**Precedence:** when both `forIssue` and `taxo` are set, the
+interactions panel scopes to `forIssue`. The main list still filters
+by `taxo`. They're independent dimensions.
+
+When neither is set, the panel falls back to its broadest state
+(emotion-only filter if `emotion` is set, otherwise "recent 100"
+across the report).
 
 ### `panel` — which sidebar is open
-
-What the right sidebar is showing. Absence of this param means the sidebar
-is closed.
 
 | Value | Meaning |
 |---|---|
@@ -64,38 +79,76 @@ is closed.
 | `interactions` | Interaction Explorer |
 | _(absent)_ | Sidebar closed |
 
-The sidebar's open/closed state is derived from this param. Closing the
-sidebar removes the param from the URL, which produces a real history entry
-AND lets `lastVisitedMap` capture the closed state correctly.
+Closing the sidebar removes the param from the URL, producing a real
+history entry AND letting `lastVisitedMap` capture the closed state.
 
-### `emotion` and `hl` — modifiers on the interactions panel
+### `emotion` and `hl` — highlight modes for the interactions panel
 
-Only meaningful when `panel=interactions`. They are mutually exclusive — the
-composable enforces this on writes.
+Together these represent the panel's "highlight mode" — a four-state
+toggle:
 
-#### `emotion=<metric>`
+| State | URL | UI |
+|---|---|---|
+| None | neither param set | "None" button selected |
+| Emotion (any) | `hl=emotion` | "Emotion" button selected, no chip active, multi-color bits per interaction |
+| Emotion (specific) | `emotion=<metric>` | "Emotion" button selected, that chip active, list filtered, single-color bits |
+| Issue bits | `hl=issue` | "Issue" button selected, violet bits for AI evidence |
 
-Filters interactions to those tagged with the given emotion AND highlights the
-emotion "bits" inside each interaction's text. Two scenarios:
+`emotion` and `hl` are mutually exclusive — the composable enforces
+this on every write.
 
-- **No `taxo`** — shows all interactions across the report tagged with this
-  emotion. This is what the ribbon emoji buttons produce.
-- **`taxo` is issue-level** — shows only that issue's interactions tagged with
-  this emotion. This is what the in-panel emotion chips produce.
+#### `hl=emotion` (no specific metric)
 
-Valid values: `joy`, `confidence`, `engagement`, `frustration`, `hopelessness`.
+The panel shows all interactions in the current scope, highlighting
+whichever emotion bits each interaction has, each in its metric's
+color. No list filtering. This is the entry/default state of
+"Emotion mode" when no chip is active.
+
+#### `emotion=<metric>` (specific)
+
+Filters AND highlights:
+
+1. Filters the interactions list to those tagged with this emotion
+2. Highlights only that emotion's bits, in its single color
+
+Valid values: `joy`, `confidence`, `engagement`, `frustration`,
+`hopelessness`.
+
+The behavior composes naturally with scope:
+- No `taxo` or `forIssue` → all report interactions of that emotion
+- With either → that scope's interactions of that emotion
 
 #### `hl=issue`
 
-Highlights the "issue bits" inside each interaction — the spans the AI
-identified as evidence for the issue. Only meaningful when `taxo` is
-issue-level (otherwise there's no single issue to derive bits from).
+Highlights the "issue bits" inside each interaction — the spans the
+AI identified as evidence for the issue. Only meaningful when the
+panel is issue-scoped (`forIssue` set, or `taxo` at L1:L2:L3). The
+"Issue" highlight button is disabled otherwise.
 
 Bits live at `interaction.issueMeta.meta.bits` and are scoped to each
 interaction's relationship to a specific issue.
 
-**Mutual exclusion:** `emotion` and `hl` should not both be present. The
-composable enforces this on every write — setting either one clears the other.
+---
+
+## The in-panel emotion chip row
+
+When `panel=interactions`, the explorer shows an emoji-only chip row
+above the sort dropdown:
+
+```
+[ ✨ ] [ 😎 ] [ 👀 ] [ 😤 ] [ 😔 ]
+```
+
+Each chip toggles the `emotion` URL param within the current scope:
+
+- Click a chip → `emotion=<that-metric>`, list filters to that
+  emotion, single-color highlight.
+- Click the active chip → clears `emotion`. If the previous mode was
+  "Emotion (any)", reverts there. Otherwise reverts to None.
+
+The chip row is the entry point for scoping an emotion view to the
+current taxo/forIssue scope. The ribbon emoji buttons, in contrast,
+always zoom out to the full report.
 
 ---
 
@@ -105,14 +158,15 @@ composable enforces this on every write — setting either one clears the other.
 |---|---|
 | Land on report | `?` |
 | Click taxonomy node in tree | `?taxo=<taxo>&panel=taxonomy` |
-| Click "Reviews" on a packet card | `?taxo=<issue-taxo>&panel=interactions` |
-| Click an emoji in the ribbon | `?panel=interactions&emotion=<metric>` (clears `taxo`) |
-| Click in-panel emotion chip while in issue | `?taxo=<issue-taxo>&panel=interactions&emotion=<metric>` |
-| Toggle issue-bits highlight in panel | `?taxo=<issue-taxo>&panel=interactions&hl=issue` |
-| Close sidebar | (removes `panel`, `emotion`, `hl`; keeps `taxo`) |
-| Open taxonomy tree with current selection | `?taxo=<taxo>&panel=taxonomy` |
+| Click "Reviews" on a packet card | `?panel=interactions&forIssue=<issue-taxo>&hl=issue` |
+| Click an emoji in the ribbon | `?panel=interactions&emotion=<metric>` (clears `taxo` and `forIssue`) |
+| Click "Emotion" in highlight toggle (no chip active) | adds `hl=emotion`, removes `emotion` |
+| Click in-panel emotion chip | adds `emotion=<metric>`, removes `hl` |
+| Click "Issue" in highlight toggle | adds `hl=issue`, removes `emotion` |
+| Click "None" in highlight toggle | removes both `emotion` and `hl` |
+| Close sidebar | removes `panel`, `emotion`, `hl`, `forIssue` |
 
-Closing the sidebar preserves `taxo`. The user's selection on the main view
+Closing the sidebar preserves `taxo`. The user's main-list selection
 shouldn't disappear when they close a panel.
 
 ---
@@ -125,57 +179,71 @@ shouldn't disappear when they close a panel.
 ```js
 const {
   // Reactive computed refs (read these)
-  taxo,            // string | null   — colon-delimited
-  panel,           // 'taxonomy' | 'interactions' | null
-  emotion,         // 'joy' | 'confidence' | ... | null
-  hl,              // 'issue' | null
-  isIssueLevel,    // boolean — taxo has three segments
+  taxo,                  // string | null — main list scope
+  forIssue,              // string | null — panel-only issue scope (L1:L2:L3)
+  panel,                 // 'taxonomy' | 'interactions' | null
+  emotion,               // 'joy' | 'confidence' | ... | null
+  hl,                    // 'issue' | 'emotion' | null
+  panelScopeTaxo,        // forIssue || taxo — what the panel uses
+  panelScopeDepth,       // 'category' | 'topic' | 'issue' | null
+  panelIsIssueScoped,    // boolean — panel scope is L1:L2:L3
 
   // Setters (call these to update the URL)
-  setTaxo,         // (taxo: string | null)
+  setTaxo,         // (taxo: string | null)        — clears forIssue
+  setForIssue,     // (taxo: string | null)        — must be issue-level
   setPanel,        // (panel: 'taxonomy' | 'interactions' | null)
   setEmotion,      // (metric: string | null)
-  setHl,           // (mode: 'issue' | null)
+  setHl,           // (mode: 'issue' | 'emotion' | null)
 
   // Composed helpers (the common entry points)
-  closePanel,                  // shorthand: clears panel + emotion + hl
-  openInteractionsForIssue,    // (issueTaxo) — sets taxo + panel=interactions
-  openInteractionsForEmotion,  // (metric)    — clears taxo, sets panel + emotion
-  openTaxonomyWith,            // (taxo)      — sets taxo + panel=taxonomy
+  closePanel,                  // clears panel + emotion + hl + forIssue
+  openInteractionsForIssue,    // (issueTaxo) — sets forIssue + panel + hl=issue, clears emotion
+  openInteractionsForEmotion,  // (metric)    — clears taxo + forIssue + hl, sets panel + emotion
+  openTaxonomyWith,            // (taxo)      — sets taxo + panel=taxonomy, clears everything else
 } = useBloomUrlState()
 ```
 
-The composable handles mutual exclusion between `emotion` and `hl`, no-op
-guarding (won't push if the URL wouldn't actually change), and validation
-(invalid values for the enum params are ignored on read).
+The composable handles mutual exclusion between `emotion` and `hl`,
+no-op guarding (won't push if the URL wouldn't actually change),
+validation (invalid values for enum params are ignored on read), and
+the "any taxo change clears forIssue" rule.
+
+### Helper semantics — which modifiers each clears
+
+| Helper | Sets | Clears |
+|---|---|---|
+| `openInteractionsForIssue` | `forIssue`, `panel=interactions`, `hl=issue` | `emotion` |
+| `openInteractionsForEmotion` | `panel=interactions`, `emotion` | `taxo`, `forIssue`, `hl` |
+| `openTaxonomyWith` | `taxo`, `panel=taxonomy` | `forIssue`, `emotion`, `hl` |
+| `closePanel` | (nothing) | `panel`, `emotion`, `hl`, `forIssue` |
+| `setTaxo` | `taxo` | `forIssue` |
 
 ---
 
 ## Things to avoid
 
-- **Don't mutate `ui.isRightOpen` or `ui.activeRightTab` directly to control
-  the sidebar.** Those should be derived from the URL. Writing to them
-  desyncs from the URL and produces the "history doesn't reflect close"
-  class of bugs.
-- **Don't read `route.query` directly when you could use the composable.** The
-  composable validates and gives you consistent, typed shapes.
-- **Don't combine `emotion` and `hl` in the same URL.** They're alternative
-  highlight modes. If a UI flow seems to need both, that's a design
-  conversation, not a URL change.
+- **Don't mutate `ui.isRightOpen` or `ui.activeRightTab` directly.**
+  Those should be derived from the URL.
+- **Don't read `route.query` directly when you could use the
+  composable.** The composable validates and gives you consistent
+  shapes.
+- **Don't combine `emotion` and `hl` in the same URL.** The
+  composable enforces this on writes; on reads they're an enum and
+  the latter "wins" only because one of them is unset.
+- **Don't set `forIssue` to a non-issue-level taxo.** The composable
+  rejects this on writes and ignores it on reads.
 
 ---
 
 ## Backward compatibility
 
-The legacy params `exploreIssue` and `exploreEmotion` are accepted on entry
-and migrated to the new shape on the next router update. This is a temporary
-shim — once we're confident all external links have been updated, the shim
-should be removed. Search for `LEGACY_URL_MIGRATION` to find the relevant
-code.
+The legacy params `exploreIssue` and `exploreEmotion` are accepted on
+entry and migrated to the new shape on the next router update.
 
-There may also be old in-the-wild URLs using dash-as-delimiter for `taxo`
-(`account-access-sign-in-login-fails` instead of `account-access:sign-in:login-fails`).
-These can't be unambiguously decoded since taxonomy segments themselves may
-contain hyphens. The composable accepts them as-is on read; prefix-matching
-on `issue.taxo` elsewhere in the codebase still works for the legacy form.
-All new writes use the canonical colon form.
+- `exploreIssue=<taxo>` → `forIssue=<taxo> + panel=interactions + hl=issue`
+- `exploreEmotion=<metric>` → `panel=interactions + emotion=<metric>`
+
+Migration uses `forIssue` (not `taxo`) so old links land in the
+"peek without filtering main list" view, matching the new card
+behavior. Search for `LEGACY_URL_MIGRATION` to find the migration
+code. Safe to remove once old links have aged out of use.

@@ -117,6 +117,8 @@ const ui = useUiStore() // Imported for the close button
 
 const formatNumber = (num) => Number(num || 0).toLocaleString('en-US')
 
+const toNodeId = (taxo) => `node-${taxo.replaceAll(':', '__')}`
+
 const treeData = computed(() => {
   if (!bloomStore.currentBloom?.categories) return []
   return bloomStore.currentBloom.categories.map(cat => {
@@ -151,15 +153,13 @@ const activeTaxo = computed(() => route.query.taxo || null)
 
 const isActive = (taxo) => {
   if (!activeTaxo.value || !taxo) return false
-  const safeRouteTaxo = activeTaxo.value.replaceAll('-', ':')
-  return safeRouteTaxo === taxo || safeRouteTaxo.startsWith(`${taxo}:`)
+  return activeTaxo.value === taxo || activeTaxo.value.startsWith(`${taxo}:`)
 }
 
 const selectNode = (taxo) => {
-  const safeTaxo = taxo.replaceAll(':', '-')
   const newQuery = { ...route.query }
-  if (newQuery.taxo === safeTaxo) delete newQuery.taxo
-  else newQuery.taxo = safeTaxo
+  if (newQuery.taxo === taxo) delete newQuery.taxo
+  else newQuery.taxo = taxo
   router.push({ query: newQuery })
 }
 
@@ -172,16 +172,11 @@ const scrollToNode = async (taxoId) => {
   }
 }
 
-watch(() => route.query.taxo, (newTaxo) => {
+watch(() => urlState.taxo.value, (newTaxo) => {
   if (newTaxo) {
-    const internalTaxo = newTaxo.replaceAll('-', ':')
-    const parts = internalTaxo.split(':')
-    
-    // Auto-expand parents
-    if (parts.length > 0) expandedNodes.value.add(parts[0]) 
+    const parts = newTaxo.split(':')
+    if (parts.length > 0) expandedNodes.value.add(parts[0])
     if (parts.length > 1) expandedNodes.value.add(`${parts[0]}:${parts[1]}`)
-    
-    // Auto-scroll to the exact node
     scrollToNode(newTaxo)
   }
 }, { immediate: true })

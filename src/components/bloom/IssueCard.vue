@@ -135,22 +135,20 @@ const getTopicTaxo = computed(() => {
 
 const isTaxoActive = (taxo) => {
   if (!taxo || !route.query.taxo) return false
-  return route.query.taxo === taxo.replaceAll(':', '-')
+  return route.query.taxo === taxo
 }
 
 const isThemeActive = (themeId) => route.query.theme === themeId
 
 const toggleTaxo = (taxo) => {
   if (!taxo) return
-  const safeTaxo = taxo.replaceAll(':', '-')
-
-  if (route.query.taxo === safeTaxo) {
+  if (route.query.taxo === taxo) {
     const newQuery = { ...route.query }
     delete newQuery.taxo
     router.push({ query: newQuery })
   } else {
     ui.navigateWithGrace('taxonomy', { 
-      taxo: safeTaxo,
+      taxo: taxo,
       exploreIssue: null, 
       exploreEmotion: null 
     }, route, router)
@@ -169,10 +167,9 @@ const toggleTheme = (themeId) => {
 
 const copyLink = () => {
   if (!props.issue.taxo) return
-  const safeTaxo = props.issue.taxo.replaceAll(':', '-')
   
   const url = new URL(window.location.href)
-  url.search = `?taxo=${safeTaxo}` // Clean slate, exactly one param
+  url.search = `?taxo=${props.issue.taxo}`
   
   navigator.clipboard.writeText(url.toString()).then(() => {
     isCopied.value = true

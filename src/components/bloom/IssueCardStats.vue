@@ -389,7 +389,6 @@ const sparklineOption = computed(() => {
 // --- ACTIONS ---
 const openExplorer = () => {
   if (!props.issue.taxo) return
-  const safeTaxo = props.issue.taxo.replaceAll(':', '-')
-  ui.navigateWithGrace('interactions', { exploreIssue: safeTaxo }, route, router)
+  ui.navigateWithGrace('interactions', { exploreIssue: props.issue.taxo }, route, router)
 }
 </script>

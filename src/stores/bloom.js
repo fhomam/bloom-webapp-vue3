@@ -116,8 +116,7 @@ export const useBloomStore = defineStore('bloom', () => {
 
       // Filter: Taxonomy
       if (query.taxo) {
-        const searchTaxo = query.taxo.replaceAll('-', ':');
-        result = result.filter(issue => issue.taxo.startsWith(searchTaxo));
+        result = result.filter(issue => issue.taxo.startsWith(query.taxo));
       }
 
       // Filter: Theme

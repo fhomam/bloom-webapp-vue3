@@ -111,7 +111,7 @@ const bloomStore = useBloomStore()
 const ui = useUiStore()
 
 // --- URL PARAMS ---
-const exploreIssue = computed(() => route.query.exploreIssue ? route.query.exploreIssue.replaceAll('-', ':') : null)
+const exploreIssue = computed(() => route.query.exploreIssue ? route.query.exploreIssue : null)
 const exploreEmotion = computed(() => route.query.exploreEmotion || null)
 
 // --- STATE ---

@@ -54,8 +54,11 @@
     </div>
 
     <div class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50/50 gap-4 sm:gap-0">
-      <RouterLink :to="`/t/${issue.silkSnapId}`" class="text-[15px] font-semibold text-bloom-primary hover:text-bloom-mono transition-colors flex items-center gap-1.5 shrink-0">
-        Open Silk Ticket &rarr;
+      <RouterLink :to="actionRoute" class="text-[15px] font-semibold text-bloom-primary hover:text-bloom-mono transition-colors flex items-center gap-1.5 shrink-0">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+        </svg>
+        Action &rarr;
       </RouterLink>
       
       <div class="flex flex-wrap gap-2.5 justify-start sm:justify-end w-full sm:w-auto">
@@ -116,6 +119,14 @@ const confidenceLabel = computed(() => {
   return 'Low'
 })
 
+// --- ACTION ROUTE (formerly "Open Silk Ticket") ---
+// Falls back to the current route if the issue has no silkSnapId, so RouterLink
+// never resolves to /t/undefined. When silkSnapId is missing, clicking is a no-op.
+const actionRoute = computed(() => {
+  if (props.issue.silkSnapId) return `/t/${props.issue.silkSnapId}`
+  return route.fullPath
+})
+
 // --- TAXO EXPLORATION ACTIONS ---
 const getCategoryTaxo = computed(() => {
   if (props.issue.category?.taxo) return props.issue.category.taxo
@@ -142,6 +153,7 @@ const isThemeActive = (themeId) => route.query.theme === themeId
 
 const toggleTaxo = (taxo) => {
   if (!taxo) return
+
   if (route.query.taxo === taxo) {
     const newQuery = { ...route.query }
     delete newQuery.taxo
@@ -167,9 +179,14 @@ const toggleTheme = (themeId) => {
 
 const copyLink = () => {
   if (!props.issue.taxo) return
+  
   const url = new URL(window.location.href)
   url.search = `?taxo=${encodeURIComponent(props.issue.taxo)}`
-  navigator.clipboard.writeText(url.toString()).then(() => { ... })
+  
+  navigator.clipboard.writeText(url.toString()).then(() => {
+    isCopied.value = true
+    setTimeout(() => { isCopied.value = false }, 2000)
+  })
 }
 </script>
 

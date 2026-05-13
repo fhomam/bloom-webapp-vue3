@@ -148,7 +148,7 @@ const toggleTaxo = (taxo) => {
     router.push({ query: newQuery })
   } else {
     ui.navigateWithGrace('taxonomy', { 
-      taxo: taxo,
+      taxo,
       exploreIssue: null, 
       exploreEmotion: null 
     }, route, router)
@@ -167,14 +167,9 @@ const toggleTheme = (themeId) => {
 
 const copyLink = () => {
   if (!props.issue.taxo) return
-  
   const url = new URL(window.location.href)
-  url.search = `?taxo=${props.issue.taxo}`
-  
-  navigator.clipboard.writeText(url.toString()).then(() => {
-    isCopied.value = true
-    setTimeout(() => { isCopied.value = false }, 2000)
-  })
+  url.search = `?taxo=${encodeURIComponent(props.issue.taxo)}`
+  navigator.clipboard.writeText(url.toString()).then(() => { ... })
 }
 </script>
 

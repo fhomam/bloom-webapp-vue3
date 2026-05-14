@@ -6,7 +6,7 @@
         <h3 class="text-sm font-bold text-slate-800 tracking-tight">Top Issues</h3>
         <span class="text-xs font-medium text-slate-500 mt-0.5">Current period</span>
       </div>
-      <RouterLink :to="getReportUrl()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1">
+      <RouterLink :to="viewAllTopIssuesRoute" class="text-xs font-bold text-bloom-primary hover:text-bloom-mono transition-colors flex items-center gap-1">
         View All Top Issues
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
       </RouterLink>
@@ -17,15 +17,15 @@
       <RouterLink 
         v-for="(issue, index) in topIssues" 
         :key="issue.id"
-        :to="getIssueUrl(issue.taxo)"
+        :to="issueRouteFor(issue)"
         :class="[
-          'bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group flex-col cursor-pointer',
+          'bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md hover:border-bloom-primary/30 transition-all group flex-col cursor-pointer',
           index === 3 ? 'hidden md:flex lg:hidden' : 'flex' 
         ]"
       >
         <div class="flex items-center justify-between mb-3 gap-3">
           <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex-1 min-w-0">
-            <span class="flex shrink-0 items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-colors">
+            <span class="flex shrink-0 items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 group-hover:bg-bloom-primary/10 group-hover:text-bloom-primary transition-colors">
               {{ index + 1 }}
             </span>
             <span class="truncate" :title="getContextPath(issue)">{{ issue.breadcrumb.topicTitle }}</span>
@@ -37,7 +37,7 @@
         </div>
 
         <div class="flex-1 flex flex-col mb-4">
-          <h4 class="text-base font-bold text-slate-900 leading-snug mb-2 group-hover:text-indigo-700 transition-colors line-clamp-2" :title="issue.title">
+          <h4 class="text-base font-bold text-slate-900 leading-snug mb-2 group-hover:text-bloom-primary transition-colors line-clamp-2" :title="issue.title">
             {{ issue.title }}
           </h4>
           <p class="text-xs text-slate-500 leading-relaxed line-clamp-3">
@@ -71,30 +71,26 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBloomStore } from '@/stores/bloom'
-// omit from lodash-es is no longer needed here since the backend shapes the data!
 
 const route = useRoute()
 const bloomStore = useBloomStore()
 
 // --- DATA ENGINE ---
+// Backend pre-shapes the array (filtered, flattened, sorted by
+// topIssueScore). We just slice the top 4 for the UI.
 const topIssues = computed(() => {
-  // The backend already filtered, flattened, and sorted by topIssueScore.
-  // All we need to do is grab the array from the store and slice the top 4 for the UI.
   const tIssues = bloomStore.topIssues || []
   return tIssues.slice(0, 4)
 })
 
 // --- HELPERS & FORMATTERS ---
 const getContextPath = (issue) => {
-  // Use the new breadcrumb object if it exists
   if (issue.breadcrumb) {
     const cat = issue.breadcrumb.categoryTitle
     const top = issue.breadcrumb.topicTitle
     if (cat && top) return `${cat} › ${top}`
     if (cat) return cat
   }
-  
-  // Safe fallback to raw taxo parsing
   if (!issue.taxo) return 'Unknown Area'
   const parts = issue.taxo.split(':')
   return parts.length > 1 ? `${parts[0]} › ${parts[1]}` : parts[0]
@@ -105,24 +101,47 @@ const formattedNumber = (num) => {
 }
 
 const getLatestInteractionDate = (issue) => {
-  // Read directly from the new pre-calculated backend property
   if (!issue.latestInteraction) return 'No interactions'
-
   const dateObj = new Date(issue.latestInteraction)
-  
-  // Guard against invalid dates
   if (isNaN(dateObj.getTime())) return 'Unknown date'
-
   return `Latest: ${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}`
 }
 
-// --- ROUTING COMPOSERS ---
-const getBaseReportUrl = () => {
-  const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
-  if (!orgXid || !offeringXid || !periodId) return ''
-  return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}`
-}
+// --- NAVIGATION TO BLOOM REPORT ---
+// We're on the dashboard route, building links to the report route.
+// Plain router-object form, no dashboard route.query carry-over —
+// these top issues are compiled period-wide and independent of any
+// active dashboard filters. The report URL contract is documented in
+// docs/bloom-report-url-state.md.
 
-const getReportUrl = () => `${getBaseReportUrl()}?theme=top-issue`
-const getIssueUrl = (taxo) => `${getBaseReportUrl()}?taxo=${taxo}`
+const reportPath = computed(() => {
+  const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
+  if (!orgXid || !offeringXid || !periodId) return null
+  return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}`
+})
+
+// "View All Top Issues" — filters the main report list to the
+// top-issue theme. No panel; the user wants to see the cards.
+const viewAllTopIssuesRoute = computed(() => {
+  if (!reportPath.value) return ''
+  return {
+    path: reportPath.value,
+    query: { theme: 'top-issue' }
+  }
+})
+
+// Per-card click — opens the interactions panel scoped to that issue,
+// with issue-bits highlighted. Uses `forIssue` so the main list isn't
+// filtered to a single card; the user can still browse around.
+const issueRouteFor = (issue) => {
+  if (!reportPath.value || !issue?.taxo) return ''
+  return {
+    path: reportPath.value,
+    query: {
+      forIssue: issue.taxo,
+      panel: 'interactions',
+      hl: 'issue'
+    }
+  }
+}
 </script>

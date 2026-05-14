@@ -112,6 +112,7 @@ const activePeriodLabel = computed(() => {
 // `taxo` is real filtering (changes the main list). `forIssue`, `panel`,
 // `emotion`, `hl` are all panel-state.
 const UI_ONLY_QUERY_KEYS = [
+  'taxo',
   'panel',
   'emotion',
   'hl',

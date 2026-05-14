@@ -340,7 +340,7 @@ watch(
     urlState.hl.value,
     activeSort.value,
     ui.activeRightTab,
-    bloomStore.allIssues,
+    bloomStore.currentBloom,
   ],
   ([, , , , , activeTab]) => {
     if (activeTab !== 'interactions') {

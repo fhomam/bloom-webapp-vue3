@@ -196,6 +196,11 @@ export const useBloomStore = defineStore('bloom', () => {
   }
 
   async function loadReportData(payload) {
+    console.log('[bloom store] loadReportData CALLED', { 
+      filters: payload.filters,
+      stack: new Error().stack 
+    })
+    
     isLoading.value = true
     error.value = null
     try {

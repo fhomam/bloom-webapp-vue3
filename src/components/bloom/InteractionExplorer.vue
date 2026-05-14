@@ -349,6 +349,13 @@ watch(
       return
     }
 
+    // If data hasn't loaded yet, stay in loading state
+    if (!bloomStore.currentBloom?.categories) {
+      isListReady.value = false
+      activeInteractionsList.value = []
+      return
+    }
+
     isListReady.value = false
     activeInteractionsList.value = []
 

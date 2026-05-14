@@ -125,6 +125,18 @@ const filterSignature = computed(() => {
   return JSON.stringify(realFilters)
 })
 
+// Combined signature for the data engine watcher. Returning a single
+// primitive string means Vue compares with Object.is and only fires
+// the watcher when the signature *actually* changes — not just when
+// a dependency re-emits with the same value.
+const dataLoadSignature = computed(() => {
+  return [
+    route.params.offeringXid || '',
+    route.params.periodId || '',
+    filterSignature.value,
+  ].join('::')
+})
+
 const filteredIssues = computed(() => {
   const filters = JSON.parse(filterSignature.value)
   return bloomStore.getFilteredAndSortedIssues(filters)
@@ -245,7 +257,7 @@ const syncSidebarFromUrl = () => {
 
 // Watcher 1: Data Engine — real route + filter changes only
 watch(
-  () => [route.params.offeringXid, route.params.periodId, filterSignature.value], 
+  dataLoadSignature,
   () => loadDataIfNeeded()
 )
 

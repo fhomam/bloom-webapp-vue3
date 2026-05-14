@@ -7,7 +7,7 @@ import { sortBy } from 'lodash-es'
 // 1. PURE MATH & UTILITIES (From bloomlib.js)
 // ==========================================
 
-// Generates the stats needed for sorting (most reviews, newest, oldest)
+// Generates the stats needed for sorting (most interactions, newest, oldest)
 function calculateInteractionStats(categories) {
   const taxoStats = {}; 
   if (!categories) return taxoStats;

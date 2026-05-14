@@ -3,7 +3,7 @@
     
     <div class="flex flex-row flex-wrap sm:flex-col gap-x-6 gap-y-2 md:gap-y-1.5 flex-1 sm:w-1/2 md:w-full">
       <button @click.stop="openExplorer" class="flex items-center md:justify-between gap-2 md:gap-0 cursor-pointer group/btn w-full sm:w-auto text-left transition-colors">
-        <span class="group-hover/btn:text-bloom-primary transition-colors">Reviews<span class="md:hidden">:</span></span>
+        <span class="group-hover/btn:text-bloom-primary transition-colors">Interactions<span class="md:hidden">:</span></span>
         <span class="font-bold text-slate-900 group-hover/btn:text-bloom-primary transition-colors">{{ formatNumber(issue.interactions?.length || 0) }}</span>
       </button>
 

@@ -6,14 +6,18 @@ export const useUiStore = defineStore('ui', () => {
   const isLeftCollapsed = ref(true)
 
   // Right Sidebar State
+  // Note: these refs are written exclusively by BloomReportView's
+  // syncSidebarFromUrl() — driven by the panel URL param. Don't mutate
+  // them directly from components; use the useBloomUrlState composable
+  // to update the URL and let the sync watcher follow.
   const isRightOpen = ref(false)
-  const rightTabs = ref([]) 
+  const rightTabs = ref([])
   const activeRightTab = ref('')
-  
+
   const reportRibbonHeight = ref(0)
 
-  // --- NEW: Global Navigation Memory ---
-  // Remembers the last specific app views so the sidebar always works from Home
+  // Global Navigation Memory — remembers last specific app views
+  // so the sidebar always works from Home.
   const lastDashboardRoute = ref(null)
   const lastReportRoute = ref(null)
 
@@ -25,42 +29,14 @@ export const useUiStore = defineStore('ui', () => {
     }
   }
 
-  function closeRightSidebar() {
-    isRightOpen.value = false
-  }
-
-  function navigateWithGrace(tabId, newParams, route, router) {
-    activeRightTab.value = tabId
-    isRightOpen.value = true
-    
-    setTimeout(() => {
-      const newQuery = { ...route.query }
-      
-      Object.keys(newParams).forEach(key => {
-        if (newParams[key] === null || newParams[key] === undefined) {
-          delete newQuery[key]
-        } else {
-          newQuery[key] = newParams[key]
-        }
-      })
-
-      if (newParams.exploreIssue) delete newQuery.exploreEmotion
-      if (newParams.exploreEmotion) delete newQuery.exploreIssue
-      
-      router.push({ query: newQuery })
-    }, 300) 
-  }
-
-  return { 
-    isLeftCollapsed, 
-    isRightOpen, 
-    rightTabs, 
-    activeRightTab, 
+  return {
+    isLeftCollapsed,
+    isRightOpen,
+    rightTabs,
+    activeRightTab,
     reportRibbonHeight,
-    lastDashboardRoute, // <-- Exported
-    lastReportRoute,    // <-- Exported
-    configureRightSidebar, 
-    closeRightSidebar,
-    navigateWithGrace
+    lastDashboardRoute,
+    lastReportRoute,
+    configureRightSidebar,
   }
 })

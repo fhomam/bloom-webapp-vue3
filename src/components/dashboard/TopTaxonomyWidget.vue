@@ -75,7 +75,7 @@
     </div>
 
     <div class="mt-4 pt-4 border-t border-slate-100 shrink-0">
-      <RouterLink :to="exploreTaxonomyUrl" class="inline-flex text-xs font-bold text-bloom-primary hover:text-indigo-800 transition-colors items-center gap-1">
+      <RouterLink :to="exploreTaxonomyRoute" class="inline-flex text-xs font-bold text-bloom-primary hover:text-indigo-800 transition-colors items-center gap-1">
         Explore Taxonomy Tree
         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
       </RouterLink>
@@ -138,7 +138,6 @@ const aggregatedData = computed(() => {
         let iIntCount = 0
         let latestMs = 0
 
-        // Calculate exact counts and latest date
         if (i.interactions) {
           iIntCount = i.interactions.length
           i.interactions.forEach(int => {
@@ -159,7 +158,7 @@ const aggregatedData = computed(() => {
           taxo: i.taxo,
           interactions: iIntCount,
           parentTitle: topicTitle,
-          latestDateLabel: getRelativeDateLabel(latestMs), // 🔥 Added formatted date
+          latestDateLabel: getRelativeDateLabel(latestMs),
           type: 'issue'
         })
       })
@@ -188,7 +187,6 @@ const aggregatedData = computed(() => {
     })
   })
 
-  // Returns arrays strictly capped at top 3 (or 5, depending on height)
   return {
     categories: cats.sort((a, b) => b.interactions - a.interactions).slice(0, 3),
     topics: tops.sort((a, b) => b.interactions - a.interactions).slice(0, 3),
@@ -203,40 +201,48 @@ const maxInteractions = computed(() => {
   return currentList.value[0].interactions
 })
 
-// --- NAVIGATION ---
+// --- NAVIGATION TO BLOOM REPORT ---
+// We're on the dashboard route here, building a link to the report
+// route. Can't use the report's URL composable (it would manipulate
+// THIS route's query); just use plain router.push with a route object.
+//
+// route.query is carried over so shared filters (srcId, country, lang,
+// theme) persist into the report. The report URL contract is documented
+// in docs/bloom-report-url-state.md.
 
-// 🔥 Click handler for individual rows
-const goToTaxonomy = (item) => {
+const reportPath = computed(() => {
   const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
-  
-  if (!orgXid || !offeringXid || !periodId) return
+  if (!orgXid || !offeringXid || !periodId) return null
+  return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}`
+})
 
-  // Format taxo for the URL (replace colons with dashes if your router requires it)
-  const safeTaxo = item.taxo ? item.taxo.replaceAll(':', '-') : ''
-
-  // Preserve all existing query parameters (like srcId, country, theme)
-  const queryToPreserve = { ...route.query, taxo: safeTaxo }
+const goToTaxonomy = (item) => {
+  if (!reportPath.value) return
 
   router.push({
-    path: `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}`,
-    query: queryToPreserve
+    path: reportPath.value,
+    query: {
+      ...route.query,
+      taxo: item.taxo,
+      panel: 'taxonomy'
+    }
   })
 }
 
-// "Explore All" link at bottom
-const exploreTaxonomyUrl = computed(() => {
-  const { orgXid, offeringType, offeringXid, periodType, periodId } = route.params
-  
-  if (!orgXid || !offeringXid || !periodId) return ''
-  
+// "Explore Taxonomy Tree" link — opens the tree on the report. Defaults
+// to the top category as the initial selection so the user lands
+// somewhere meaningful instead of an unscrolled tree.
+const exploreTaxonomyRoute = computed(() => {
+  if (!reportPath.value) return ''
+
   const topCategory = aggregatedData.value?.categories?.[0]
-  const safeTaxo = topCategory ? topCategory.taxo.replaceAll(':', '-') : ''
-  
-  // Construct a raw query string to preserve existing filters
-  const currentQuery = new URLSearchParams(route.query)
-  if (safeTaxo) currentQuery.set('taxo', safeTaxo)
 
-  return `/${orgXid}/reports/${offeringType}/${offeringXid}/${periodType}/${periodId}?${currentQuery.toString()}`
+  return {
+    path: reportPath.value,
+    query: {
+      ...route.query,
+      panel: 'taxonomy'
+    }
+  }
 })
-
 </script>

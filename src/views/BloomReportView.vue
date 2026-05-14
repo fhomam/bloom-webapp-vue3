@@ -115,9 +115,7 @@ const UI_ONLY_QUERY_KEYS = [
   'panel',
   'emotion',
   'hl',
-  'forIssue',
-  'exploreIssue',   // legacy — gets migrated on mount
-  'exploreEmotion', // legacy — gets migrated on mount
+  'forIssue'
 ]
 
 const filterSignature = computed(() => {
@@ -161,7 +159,7 @@ const activeTheme = createUrlModel('theme', 'all')
 const activeSort = createUrlModel('sort', 'most-reviews')
 
 const sortOptions = [
-  { id: 'most-reviews', label: 'Most Reviews' }, 
+  { id: 'most-reviews', label: 'Most Interactions' }, 
   { id: 'most-upvoted', label: 'Most Upvoted' }, 
   { id: 'newest-reviews', label: 'Newest' }
 ]
@@ -210,47 +208,6 @@ const loadDataIfNeeded = async () => {
   } catch (err) {
     console.error("Bloom Data failed to load:", err)
   }
-}
-
-// ====================================================================
-// LEGACY_URL_MIGRATION
-// Map the old URL shape (exploreIssue / exploreEmotion) to the new
-// one (forIssue + panel + emotion + hl) on entry. One-shot rewrite via
-// router.replace, then the rest of the code only reads canonical
-// params. Safe to remove after external links have aged out.
-//
-//   exploreIssue=<taxo>    → forIssue=<taxo> + panel=interactions + hl=issue
-//   exploreEmotion=<m>     → panel=interactions + emotion=<m>
-//
-// Note: exploreIssue maps to forIssue (NOT taxo) — old "peek into this
-// issue's reviews" links should land in the new "scope the panel
-// without filtering the main list" view, matching current behavior.
-// ====================================================================
-const migrateLegacyUrlParams = () => {
-  const q = route.query
-  const hasLegacy = q.exploreIssue || q.exploreEmotion
-  if (!hasLegacy) return
-
-  const next = { ...q }
-
-  if (next.exploreIssue) {
-    // Legacy exploreIssue historically used dash-form; normalize to colons.
-    next.forIssue = String(next.exploreIssue).replaceAll('-', ':')
-    next.panel = 'interactions'
-    next.hl = 'issue'
-    delete next.exploreIssue
-  }
-
-  if (next.exploreEmotion) {
-    next.panel = 'interactions'
-    next.emotion = next.exploreEmotion
-    delete next.exploreEmotion
-    // If both legacy params were present, the forIssue branch above
-    // already set hl=issue. Emotion supersedes it (mutual exclusion).
-    if (next.hl === 'issue') delete next.hl
-  }
-
-  router.replace({ query: next })
 }
 
 // ====================================================================
@@ -305,13 +262,10 @@ onMounted(() => {
     handleScroll()
   }
 
-  // 1. Migrate any legacy URL params before initial sync.
-  migrateLegacyUrlParams()
-
-  // 2. Kick off data load.
+  // 1. Kick off data load.
   loadDataIfNeeded()
 
-  // 3. Sidebar state — derive from URL. On cold load with an active
+  // 2. Sidebar state — derive from URL. On cold load with an active
   //    panel, delay the slide-in by 400ms so the main view paints
   //    first. On warm navigations, no delay.
   ui.rightTabs = sidebarTabs

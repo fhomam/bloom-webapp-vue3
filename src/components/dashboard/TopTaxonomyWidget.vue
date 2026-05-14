@@ -235,8 +235,6 @@ const goToTaxonomy = (item) => {
 const exploreTaxonomyRoute = computed(() => {
   if (!reportPath.value) return ''
 
-  const topCategory = aggregatedData.value?.categories?.[0]
-
   return {
     path: reportPath.value,
     query: {

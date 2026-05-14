@@ -14,7 +14,7 @@
           @click="navigateToIssue(issue)"
           :class="[
             'bg-white rounded-2xl p-4 flex flex-col transition-all',
-            getIssueRoute(issue) ? 'cursor-pointer border border-slate-100 shadow-sm hover:border-slate-200 hover:shadow-md' : 'border border-slate-100 shadow-sm'
+            issueRoute(issue) ? 'cursor-pointer border border-slate-100 shadow-sm hover:border-slate-200 hover:shadow-md' : 'border border-slate-100 shadow-sm'
           ]"
         >
           <div class="flex items-center justify-between mb-2.5 gap-2">
@@ -110,20 +110,31 @@ const unprocessedOfferingsCount = computed(() => {
 })
 
 const visibleTrendingIssues = computed(() => {
-  const limit = unprocessedOfferingsCount.value === 0 ? 3 : 5;
-
-  return homeStore.trendingIssuesData.slice(0, limit);
+  const limit = unprocessedOfferingsCount.value === 0 ? 3 : 5
+  return homeStore.trendingIssuesData.slice(0, limit)
 })
 
-const getIssueRoute = (issue) => {
-  const portfolioItem = homeStore.portfolioData.find(p => p.offeringXid === issue.offeringXid);
-  if (!portfolioItem || !portfolioItem.latestBloomKey) return null;
-  
-  return `/${appStore.orgXid}/reports/${portfolioItem.offeringType}/${portfolioItem.offeringXid}/${portfolioItem.latestBloomType}/${portfolioItem.latestBloomKey}?taxo=${issue.taxo}&exploreIssue=${issue.taxo}`;
+// --- NAVIGATION TO BLOOM REPORT ---
+// We're on the Home view, jumping into a specific offering's report
+// to look at a trending issue. Each issue belongs to a different
+// offering, so the route changes per click — no shared base path.
+
+const issueRoute = (issue) => {
+  const portfolioItem = homeStore.portfolioData.find(p => p.offeringXid === issue.offeringXid)
+  if (!portfolioItem || !portfolioItem.latestBloomKey || !issue.taxo) return null
+
+  return {
+    path: `/${appStore.orgXid}/reports/${portfolioItem.offeringType}/${portfolioItem.offeringXid}/${portfolioItem.latestBloomType}/${portfolioItem.latestBloomKey}`,
+    query: {
+      taxo: issue.taxo,
+      panel: 'interactions',
+      hl: 'issue'
+    }
+  }
 }
 
 const navigateToIssue = (issue) => {
-  const route = getIssueRoute(issue);
-  if (route) router.push(route);
+  const route = issueRoute(issue)
+  if (route) router.push(route)
 }
 </script>

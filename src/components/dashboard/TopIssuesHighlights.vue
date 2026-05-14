@@ -131,14 +131,13 @@ const viewAllTopIssuesRoute = computed(() => {
 })
 
 // Per-card click — opens the interactions panel scoped to that issue,
-// with issue-bits highlighted. Uses `forIssue` so the main list isn't
-// filtered to a single card; the user can still browse around.
+// with issue-bits highlighted. 
 const issueRouteFor = (issue) => {
   if (!reportPath.value || !issue?.taxo) return ''
   return {
     path: reportPath.value,
     query: {
-      forIssue: issue.taxo,
+      taxo: issue.taxo,
       panel: 'interactions',
       hl: 'issue'
     }

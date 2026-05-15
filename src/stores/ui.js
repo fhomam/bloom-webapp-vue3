@@ -1,25 +1,45 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+
+const FEEDBACK_DRAFT_KEY = 'bloom.feedback.draft'
+
+function loadDraft() {
+  try {
+    return localStorage.getItem(FEEDBACK_DRAFT_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function saveDraft(value) {
+  try {
+    if (value) {
+      localStorage.setItem(FEEDBACK_DRAFT_KEY, value)
+    } else {
+      localStorage.removeItem(FEEDBACK_DRAFT_KEY)
+    }
+  } catch {
+    // localStorage unavailable; silently degrade
+  }
+}
 
 export const useUiStore = defineStore('ui', () => {
-  // Left Nav State
   const isLeftCollapsed = ref(true)
 
-  // Right Sidebar State
-  // Note: these refs are written exclusively by BloomReportView's
-  // syncSidebarFromUrl() — driven by the panel URL param. Don't mutate
-  // them directly from components; use the useBloomUrlState composable
-  // to update the URL and let the sync watcher follow.
   const isRightOpen = ref(false)
   const rightTabs = ref([])
   const activeRightTab = ref('')
-
   const reportRibbonHeight = ref(0)
 
-  // Global Navigation Memory — remembers last specific app views
-  // so the sidebar always works from Home.
   const lastDashboardRoute = ref(null)
   const lastReportRoute = ref(null)
+
+  const isFeedbackOpen = ref(false)
+  const feedbackDraft = ref(loadDraft())
+
+  watch(feedbackDraft, (val) => {
+    saveDraft(val)
+  })
 
   function configureRightSidebar(tabs, defaultTab, autoOpen = false) {
     rightTabs.value = tabs
@@ -27,6 +47,22 @@ export const useUiStore = defineStore('ui', () => {
     if (autoOpen) {
       isRightOpen.value = true
     }
+  }
+
+  function toggleFeedback() {
+    isFeedbackOpen.value = !isFeedbackOpen.value
+  }
+
+  function openFeedback() {
+    isFeedbackOpen.value = true
+  }
+
+  function closeFeedback() {
+    isFeedbackOpen.value = false
+  }
+
+  function clearFeedbackDraft() {
+    feedbackDraft.value = ''
   }
 
   return {
@@ -38,5 +74,11 @@ export const useUiStore = defineStore('ui', () => {
     lastDashboardRoute,
     lastReportRoute,
     configureRightSidebar,
+    isFeedbackOpen,
+    feedbackDraft,
+    toggleFeedback,
+    openFeedback,
+    closeFeedback,
+    clearFeedbackDraft
   }
 })

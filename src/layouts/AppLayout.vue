@@ -17,120 +17,108 @@
         <button @click="ui.isLeftCollapsed = true" class="md:hidden text-slate-400 hover:text-white">✕</button>
       </div>
 
-      <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-2 px-3 hide-scrollbar">
-        
-        <RouterLink 
-          :to="getRoute('home')"
-          :class="[
-            'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            (route.name === 'home' || route.name === 'Home') ? 'bg-slate-800 text-white' : '',
-            ui.isLeftCollapsed ? 'justify-center' : ''
-          ]"
-        >
-          <HomeIcon class="w-5 h-5 shrink-0" />
-          <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Portfolio</span>
-        </RouterLink>
-
-        <div :class="['my-2 border-t border-slate-800', ui.isLeftCollapsed ? 'mx-2' : 'mx-0']"></div>
-
-        <RouterLink 
-          :to="dashboardLink" 
-          :class="[
-            'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            route.name === 'BloomDashboard' ? 'bg-slate-800 text-white' : '',
-            ui.isLeftCollapsed ? 'justify-center' : ''
-          ]"
-        >
-          <DashboardIcon class="w-5 h-5 shrink-0" />
-          <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Dashboard</span>
-        </RouterLink>
-        
-        <RouterLink 
-          :to="reportLink" 
-          :class="[
-            'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            route.name === 'BloomReport' ? 'bg-slate-800 text-white' : '',
-            ui.isLeftCollapsed ? 'justify-center' : ''
-          ]"
-        >
-          <ReportIcon class="w-5 h-5 shrink-0" />
-          <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Bloom Report</span>
-        </RouterLink>
-
-        <div :class="['my-2 border-t border-slate-800', ui.isLeftCollapsed ? 'mx-2' : 'mx-0']"></div>
-
-        <RouterLink 
-          :to="getRoute('pipelines')"
-          :class="[
-            'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            route.name === 'Pipelines' ? 'bg-slate-800 text-white' : '',
-            ui.isLeftCollapsed ? 'justify-center' : ''
-          ]"
-        >
-          <PipelineIcon class="w-5 h-5 shrink-0" />
-          <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Pipelines</span>
-        </RouterLink>
-
-        <RouterLink 
-          :to="getRoute('connectors')"
-          :class="[
-            'group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors relative',
-            route.name === 'Connectors' ? 'bg-slate-800 text-white' : '',
-            ui.isLeftCollapsed ? 'justify-center' : ''
-          ]"
-        >
-          <ConnectorIcon class="w-5 h-5 shrink-0" />
-          <span :class="['ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100']">Connectors</span>
-        </RouterLink>
-
+      <nav class="flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-3 hide-scrollbar">
+        <template v-for="(section, sIdx) in navSections" :key="sIdx">
+          <div 
+            v-if="sIdx > 0" 
+            :class="['my-2 border-t border-slate-800', ui.isLeftCollapsed ? 'mx-2' : 'mx-0']"
+          ></div>
+          <NavItem
+            v-for="item in section.items"
+            :key="item.label"
+            :label="item.label"
+            :icon="item.icon"
+            :route="item.route"
+            :match="item.match"
+            :locked="item.locked"
+            :feature="item.feature"
+            :is-collapsed="ui.isLeftCollapsed"
+            :locked-route="accessRoute"
+          />
+        </template>
       </nav>
 
-      <div class="relative p-3 border-t border-slate-800 shrink-0">
+      <div class="relative shrink-0">
         
-        <div 
-          v-if="isUserMenuOpen" 
-          :class="[
-            'absolute w-56 bg-slate-800 rounded-xl shadow-xl overflow-hidden border border-slate-700 z-[100]',
-            ui.isLeftCollapsed ? 'left-[calc(100%+10px)] bottom-0' : 'bottom-full left-3 mb-2'
-          ]"
-        >
-          <div class="px-4 py-3 border-b border-slate-700">
-            <p class="text-sm text-white font-bold truncate">{{ userName }}</p>
-            <p class="text-xs text-slate-400 truncate">{{ userEmail }}</p>
-          </div>
-          
-          <div class="p-1">
-            <RouterLink @click="isUserMenuOpen = false" :to="getRoute('billing')" class="flex items-center px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
-              <BillingIcon class="w-4 h-4 mr-2" /> Billing
-            </RouterLink>
-            <RouterLink @click="isUserMenuOpen = false" :to="getRoute('settings')" class="flex items-center px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">
-              <SettingsIcon class="w-4 h-4 mr-2" /> Settings
-            </RouterLink>
-          </div>
-          
-          <div class="p-1 border-t border-slate-700">
-            <button @click="handleLogout" class="w-full flex items-center px-3 py-2 text-sm text-rose-400 hover:text-rose-300 hover:bg-slate-700 rounded-lg transition-colors">
-              <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-              Log out
-            </button>
-          </div>
+        <div class="px-3 pt-2 pb-1">
+          <button 
+            @click="ui.toggleFeedback()"
+            :class="[
+              'w-full group flex items-center p-2 rounded-lg hover:bg-slate-800 hover:text-white transition-colors',
+              ui.isFeedbackOpen ? 'bg-slate-800 text-white' : '',
+              ui.isLeftCollapsed ? 'justify-center' : ''
+            ]"
+          >
+            <FeedbackIcon class="w-5 h-5 shrink-0" />
+            <span 
+              :class="[
+                'ml-3 whitespace-nowrap font-medium text-sm transition-opacity duration-300',
+                ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100'
+              ]"
+            >
+              Send feedback
+            </span>
+          </button>
         </div>
 
-        <button 
-          @click="isUserMenuOpen = !isUserMenuOpen" 
-          :class="[
-            'w-full flex items-center p-2 rounded-lg hover:bg-slate-800 transition-colors outline-none',
-            ui.isLeftCollapsed ? 'justify-center' : ''
-          ]"
-        >
-          <div class="w-8 h-8 rounded bg-slate-700 flex items-center justify-center text-white font-bold text-xs shrink-0">
-            {{ userInitials }}
+        <div class="p-3 border-t border-slate-800">
+          <div 
+            v-if="isUserMenuOpen" 
+            :class="[
+              'absolute w-56 bg-slate-800 rounded-xl shadow-xl overflow-hidden border border-slate-700 z-[100]',
+              ui.isLeftCollapsed ? 'left-[calc(100%+10px)] bottom-0' : 'bottom-full left-3 mb-2'
+            ]"
+          >
+            <div class="px-4 py-3 border-b border-slate-700">
+              <p class="text-sm text-white font-bold truncate">{{ userName }}</p>
+              <p class="text-xs text-slate-400 truncate">{{ userEmail }}</p>
+            </div>
+            
+            <div class="p-1">
+              <RouterLink 
+                @click="isUserMenuOpen = false" 
+                :to="`${accessRoute}?feature=billing`" 
+                class="flex items-center px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors group"
+              >
+                <BillingIcon class="w-4 h-4 mr-2" /> 
+                <span class="flex-1">Billing</span>
+                <LockIcon class="w-3 h-3 text-slate-500 group-hover:text-slate-400 transition-colors" />
+              </RouterLink>
+              <RouterLink 
+                @click="isUserMenuOpen = false" 
+                :to="`${accessRoute}?feature=settings`" 
+                class="flex items-center px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors group"
+              >
+                <SettingsIcon class="w-4 h-4 mr-2" /> 
+                <span class="flex-1">Settings</span>
+                <LockIcon class="w-3 h-3 text-slate-500 group-hover:text-slate-400 transition-colors" />
+              </RouterLink>
+            </div>
+            
+            <div class="p-1 border-t border-slate-700">
+              <button @click="handleLogout" class="w-full flex items-center px-3 py-2 text-sm text-rose-400 hover:text-rose-300 hover:bg-slate-700 rounded-lg transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Log out
+              </button>
+            </div>
           </div>
-          <div :class="['text-left transition-opacity duration-300 overflow-hidden', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100 ml-3']">
-            <p class="text-sm font-medium text-white truncate">{{ userName }}</p>
-            <p class="text-[10px] text-slate-400 uppercase tracking-wider">Workspace</p>
-          </div>
-        </button>
+
+          <button 
+            @click="isUserMenuOpen = !isUserMenuOpen" 
+            :class="[
+              'w-full flex items-center p-2 rounded-lg hover:bg-slate-800 transition-colors outline-none',
+              ui.isLeftCollapsed ? 'justify-center' : ''
+            ]"
+          >
+            <div class="w-8 h-8 rounded bg-slate-700 flex items-center justify-center text-white font-bold text-xs shrink-0">
+              {{ userInitials }}
+            </div>
+            <div :class="['text-left transition-opacity duration-300 overflow-hidden', ui.isLeftCollapsed ? 'opacity-0 hidden md:hidden' : 'opacity-100 ml-3']">
+              <p class="text-sm font-medium text-white truncate">{{ userName }}</p>
+              <p class="text-[10px] text-slate-400 uppercase tracking-wider">Workspace</p>
+            </div>
+          </button>
+        </div>
 
       </div>
     </aside>
@@ -211,6 +199,7 @@
 
       </div>
     </div>
+    <FeedbackPanel />
   </div>
 </template>
 
@@ -222,22 +211,26 @@ import { useBloomStore } from '@/stores/bloom'
 import { useAppStore } from '@/stores/app'
 import { useBloomUrlState } from '@/composables/useBloomUrlState'
 import Dropdown from '@/components/common/Dropdown.vue'
+import NavItem from '@/components/common/NavItem.vue'
+import FeedbackPanel from '@/components/common/FeedbackPanel.vue'
 
-// Extracted Icons
 import HomeIcon from '@/components/icons/HomeIcon.vue'
 import DashboardIcon from '@/components/icons/DashboardIcon.vue'
 import ReportIcon from '@/components/icons/ReportIcon.vue'
+import TicketIcon from '@/components/icons/TicketIcon.vue'
+import SourceIcon from '@/components/icons/SourceIcon.vue'
 import PipelineIcon from '@/components/icons/PipelineIcon.vue'
-import ConnectorIcon from '@/components/icons/ConnectorIcon.vue'
+import DestinationIcon from '@/components/icons/DestinationIcon.vue'
+import TeamIcon from '@/components/icons/TeamIcon.vue'
 import BillingIcon from '@/components/icons/BillingIcon.vue'
 import SettingsIcon from '@/components/icons/SettingsIcon.vue'
 import PanelIcon from '@/components/icons/PanelIcon.vue'
+import FeedbackIcon from '@/components/icons/FeedbackIcon.vue'
+import LockIcon from '@/components/icons/LockIcon.vue'
 
-// Sidebar Content Components
 import TaxonomyTree from '@/components/bloom/TaxonomyTree.vue'
 import InteractionExplorer from '@/components/bloom/InteractionExplorer.vue'
 
-// General Components
 import SystemError from '@/components/common/SystemError.vue'
 
 const ui = useUiStore()
@@ -247,9 +240,6 @@ const appStore = useAppStore()
 const route = useRoute()
 const router = useRouter()
 
-// URL state — only meaningful on BloomReport pages, but safe to call here
-// since useBloomUrlState just reads route.query and doesn't assume anything
-// about the current route.
 const urlState = useBloomUrlState()
 
 const availableOfferings = ref([])
@@ -259,7 +249,7 @@ const lastVisitedMap = ref({})
 const isUserMenuOpen = ref(false)
 
 const isGlobalView = computed(() => {
-  return ['home', 'Home', 'Pipelines', 'Connectors', 'Billing', 'Settings'].includes(route.name)
+  return ['home', 'Home', 'Pipelines', 'Sources', 'Destinations', 'Tickets', 'Team', 'Billing', 'Settings', 'AccessDenied'].includes(route.name)
 })
 
 const isSidebarEffectivelyOpen = computed(() => {
@@ -268,29 +258,54 @@ const isSidebarEffectivelyOpen = computed(() => {
 
 const getRoute = (path) => appStore.orgXid ? `/${appStore.orgXid}/${path}` : ''
 
-// ====================================================================
-// HEADER PANEL TOGGLE
-// Going through the URL composable keeps history clean: closing the
-// sidebar writes the URL (no panel param), which lets lastVisitedMap
-// capture the closed state and keeps back/forward behavior correct.
-// ====================================================================
+const accessRoute = computed(() => {
+  if (!appStore.orgXid) return '/'
+  return `/${appStore.orgXid}/access`
+})
+
+const navSections = computed(() => [
+  {
+    items: [
+      { label: 'Portfolio', icon: HomeIcon, route: () => getRoute('home'), match: ['home', 'Home'] }
+    ]
+  },
+  {
+    items: [
+      { label: 'Dashboard', icon: DashboardIcon, route: () => dashboardLink.value, match: ['BloomDashboard'] },
+      { label: 'Bloom report', icon: ReportIcon, route: () => reportLink.value, match: ['BloomReport'] },
+      { label: 'Tickets', icon: TicketIcon, route: () => getRoute('tickets'), match: ['Tickets'], locked: true, feature: 'tickets' }
+    ]
+  },
+  {
+    items: [
+      { label: 'Sources', icon: SourceIcon, route: () => getRoute('sources'), match: ['Sources'], locked: true, feature: 'sources' },
+      { label: 'Pipelines', icon: PipelineIcon, route: () => getRoute('pipelines'), match: ['Pipelines'], locked: true, feature: 'pipelines' },
+      { label: 'Destinations', icon: DestinationIcon, route: () => getRoute('destinations'), match: ['Destinations'], locked: true, feature: 'destinations' }
+    ]
+  },
+  {
+    items: [
+      { label: 'Team', icon: TeamIcon, route: () => getRoute('team'), match: ['Team'], locked: true, feature: 'team' }
+    ]
+  }
+])
+
+const handleFeedback = () => {
+  window.location.href = 'mailto:hello@bloom.example?subject=Bloom%20feedback'
+}
+
 const togglePanel = () => {
   if (urlState.panel.value) {
     urlState.closePanel()
   } else {
-    // Default to taxonomy when opening from a fully-closed state.
     urlState.setPanel('taxonomy')
   }
 }
 
-// Tab click — switches between taxonomy and interactions via the URL.
-// This replaces the previous direct `ui.activeRightTab = tab.id`, which
-// would desync from the URL.
 const selectTab = (tabId) => {
   urlState.setPanel(tabId)
 }
 
-// --- USER MENU RESPONSIVE BEHAVIORS ---
 let windowWidth = window.innerWidth
 
 const handleResize = () => {
@@ -384,7 +399,6 @@ watch(
   }
 )
 
-// Active Offering Dropdown Model
 const activeOffering = computed({
   get: () => route.params.offeringXid || '',
   set: (newXid) => {

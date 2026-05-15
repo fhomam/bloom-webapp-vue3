@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden min-w-[320px]">
+  <div class="flex h-[100dvh] bg-slate-50 font-sans text-slate-900 overflow-hidden min-w-[320px]">
     
     <aside 
       :class="[

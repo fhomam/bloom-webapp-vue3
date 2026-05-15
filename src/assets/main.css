@@ -12,7 +12,8 @@
 /* Ensure the Vue mount point takes up the full screen naturally */
 html, body, #app {
   height: 100%;
+  min-height: 100dvh;
   margin: 0;
   padding: 0;
-  background-color: #f8fafc; /* tailwind slate-50 */
+  background-color: #f8fafc;
 }

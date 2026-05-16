@@ -30,6 +30,7 @@ export const useHomeStore = defineStore('home', () => {
     try {
       const res = await api.getHomePulse(payload)
       if (res) pulseData.value = res
+        console.log(JSON.stringify(pulseData.value, '', 2));
     } catch (err) {
       console.error('Failed to load pulse data:', err)
       error.value = "Failed to load Organization Overview."

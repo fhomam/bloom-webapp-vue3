@@ -272,7 +272,7 @@ const navSections = computed(() => [
   {
     items: [
       { label: 'Dashboard', icon: DashboardIcon, route: () => dashboardLink.value, match: ['BloomDashboard'] },
-      { label: 'Bloom report', icon: ReportIcon, route: () => reportLink.value, match: ['BloomReport'] },
+      { label: 'Report', icon: ReportIcon, route: () => reportLink.value, match: ['BloomReport'] },
       { label: 'Tickets', icon: TicketIcon, route: () => getRoute('tickets'), match: ['Tickets'], locked: true, feature: 'tickets' }
     ]
   },

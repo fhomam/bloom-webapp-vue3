@@ -1,74 +1,101 @@
 <template>
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-    
-    <div class="bg-white rounded-2xl border border-slate-200 p-5 xl:p-6 shadow-sm flex flex-col justify-between min-h-[120px]">
-      <div class="flex items-start justify-between w-full mb-3">
-        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Total Collected</span>
-        <div class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center shrink-0">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707-.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-        </div>
-      </div>
-      <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1" :class="{ 'opacity-50 transition-opacity': homeStore.isPulseLoading }">
-        <span class="text-3xl xl:text-4xl font-extrabold text-slate-900 tracking-tight leading-none">
-          {{ formatCompactNumber(Number(homeStore.pulseData.totalAvailableInteractions)) }}
-        </span>
-        <span class="text-[11px] xl:text-xs font-semibold text-slate-500">Interactions</span>
-      </div>
-    </div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
 
-    <div class="bg-indigo-50/40 rounded-2xl border border-indigo-100 p-5 xl:p-6 shadow-sm flex flex-col justify-between relative overflow-hidden min-h-[120px]">
-      <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-indigo-100/50 to-transparent rounded-bl-full -z-10"></div>
-      <div class="flex items-start justify-between w-full mb-3 z-10">
-        <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mt-1 flex items-center gap-1.5">
-          AI Processed
-        </span>
-        <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-        </div>
-      </div>
-      <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 z-10" :class="{ 'opacity-50 transition-opacity': homeStore.isPulseLoading }">
-        <span class="text-3xl xl:text-4xl font-extrabold text-indigo-900 tracking-tight leading-none">
-          {{ formatCompactNumber(Number(homeStore.pulseData.totalAnalyzedInteractions)) }}
-        </span>
-        <span class="text-[11px] xl:text-xs font-semibold text-indigo-600/80">Interactions</span>
-      </div>
-    </div>
+    <!-- Fused on <lg: Processed (flips to show Available for backfill discovery) -->
+    <HomeViewStatCard
+      class="lg:hidden"
+      label="Processed"
+      sub-label="Week / Total"
+      :primary-value="homeStore.pulseData.weeklyProcessedInteractions"
+      :secondary-value="homeStore.pulseData.totalAnalyzedInteractions"
+      :icon-path="ICONS.bolt"
+      :icon-stroke-width="2.5"
+      icon-bg-class="bg-indigo-50"
+      icon-text-class="text-indigo-500"
+      :change="weeklyChange"
+      :loading="homeStore.isPulseLoading"
+      flippable
+      back-label="Available"
+      back-sub-label="Analyzed / Collected"
+      :back-primary-value="homeStore.pulseData.totalAnalyzedInteractions"
+      :back-secondary-value="homeStore.pulseData.totalAvailableInteractions"
+    />
 
-    <div class="bg-white rounded-2xl border border-slate-200 p-5 xl:p-6 shadow-sm flex flex-col justify-between min-h-[120px]">
-      <div class="flex items-start justify-between w-full mb-3">
-        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Monitored</span>
-        <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-        </div>
-      </div>
-      <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1" :class="{ 'opacity-50 transition-opacity': homeStore.isPulseLoading }">
-        <span class="text-3xl xl:text-4xl font-extrabold text-slate-900 tracking-tight leading-none">
-          {{ formatCompactNumber(Number(homeStore.pulseData.activeOfferingsCount)) }}
-        </span>
-        <span class="text-[11px] xl:text-xs font-semibold text-slate-500">Offerings</span>
-      </div>
-    </div>
+    <!-- Fused on <lg: Coverage (flips to show Last Received) -->
+    <HomeViewStatCard
+      class="lg:hidden"
+      label="Coverage"
+      sub-label="Offerings / Sources"
+      :primary-value="homeStore.pulseData.activeOfferingsCount"
+      :secondary-value="homeStore.pulseData.syncingSourcesCount"
+      :icon-path="ICONS.grid"
+      icon-bg-class="bg-emerald-50"
+      icon-text-class="text-emerald-500"
+      :sync-status="syncStatus"
+      :loading="homeStore.isPulseLoading"
+      flippable
+      back-label="Last Received"
+      :back-primary-value="lastReceived.value"
+      :back-unit="lastReceived.unit"
+      back-primary-raw
+      back-icon-bg-class="bg-slate-50"
+      back-icon-text-class="text-slate-400"
+    />
 
-    <div class="bg-white rounded-2xl border border-slate-200 p-5 xl:p-6 shadow-sm flex flex-col justify-between min-h-[120px]">
-      <div class="flex items-start justify-between w-full mb-3">
-        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Sources</span>
-        <div class="w-8 h-8 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-        </div>
-      </div>
-      <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1" :class="{ 'opacity-50 transition-opacity': homeStore.isPulseLoading }">
-        <span class="text-3xl xl:text-4xl font-extrabold text-slate-900 tracking-tight leading-none">
-          {{ formatCompactNumber(Number(homeStore.pulseData.syncingSourcesCount)) }}
-        </span>
-      
-        <span class="relative flex h-2 w-2 self-center shrink-0 translate-y-[6px] ml-[-3px]">
-          <span :class="[syncStatus.pingColor, 'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75']"></span>
-          <span :class="[syncStatus.dotColor, 'relative inline-flex rounded-full h-2 w-2']"></span>
-        </span>
-        <span class="text-[11px] xl:text-xs font-semibold text-slate-500 -ml-0.5">{{ syncStatus.label }}</span>
-
-      </div>
-    </div>
+    <!-- lg+: 4 split cards -->
+    <HomeViewStatCard
+      class="hidden lg:flex"
+      label="Total Processed"
+      :primary-value="homeStore.pulseData.totalAnalyzedInteractions"
+      unit="Interactions"
+      :icon-path="ICONS.bolt"
+      :icon-stroke-width="2.5"
+      icon-bg-class="bg-indigo-50"
+      icon-text-class="text-indigo-500"
+      :loading="homeStore.isPulseLoading"
+      flippable
+      back-label="Available to Analyze"
+      :back-primary-value="homeStore.pulseData.totalAvailableInteractions"
+      back-unit="Interactions"
+    />
+    <HomeViewStatCard
+      class="hidden lg:flex"
+      label="This Week"
+      :primary-value="homeStore.pulseData.weeklyProcessedInteractions"
+      unit="Interactions"
+      :icon-path="ICONS.clock"
+      icon-bg-class="bg-sky-50"
+      icon-text-class="text-sky-500"
+      :change="weeklyChange"
+      :loading="homeStore.isPulseLoading"
+    />
+    <HomeViewStatCard
+      class="hidden lg:flex"
+      label="Monitoring"
+      :primary-value="homeStore.pulseData.activeOfferingsCount"
+      unit="Offerings"
+      :icon-path="ICONS.grid"
+      icon-bg-class="bg-emerald-50"
+      icon-text-class="text-emerald-500"
+      :loading="homeStore.isPulseLoading"
+    />
+    <HomeViewStatCard
+      class="hidden lg:flex"
+      label="Sources"
+      :primary-value="homeStore.pulseData.syncingSourcesCount"
+      :icon-path="ICONS.link"
+      icon-bg-class="bg-amber-50"
+      icon-text-class="text-amber-500"
+      :sync-status="syncStatus"
+      :loading="homeStore.isPulseLoading"
+      flippable
+      back-label="Last Received"
+      :back-primary-value="lastReceived.value"
+      :back-unit="lastReceived.unit"
+      back-primary-raw
+      back-icon-bg-class="bg-slate-50"
+      back-icon-text-class="text-slate-400"
+    />
 
   </div>
 </template>
@@ -76,25 +103,70 @@
 <script setup>
 import { computed } from 'vue'
 import { useHomeStore } from '@/stores/home'
-import { formatCompactNumber } from '@/library/utils'
+import HomeViewStatCard from '@/components/home/HomeViewStatCard.vue'
 
 const homeStore = useHomeStore()
 
-// Future-proofed status logic for green/orange/red
+const ICONS = {
+  bolt: 'M13 10V3L4 14h7v7l9-11h-7z',
+  clock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  grid: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z',
+  link: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1',
+}
+
+// Weekly change pill
+const weeklyChange = computed(() => {
+  const raw = homeStore.pulseData.weeklyProcessedChangePercent
+  if (raw === null || raw === undefined || raw === '') return { show: false }
+  const pct = Number(raw)
+  if (isNaN(pct)) return { show: false }
+
+  const sign = pct > 0 ? '+' : ''
+  const label = `${sign}${Math.round(pct)}%`
+
+  let classes
+  if (pct > 0) classes = 'bg-emerald-50 text-emerald-700'
+  else if (pct < 0) classes = 'bg-rose-50 text-rose-700'
+  else classes = 'bg-slate-100 text-slate-500'
+
+  return { show: true, label, classes }
+})
+
+// Sources sync status
 const syncStatus = computed(() => {
   const total = Number(homeStore.pulseData.syncingSourcesCount) || 0
-  // Assuming a future field for failed pipelines
-  const failed = Number(homeStore.pulseData.failedSourcesCount) || 0 
+  const failed = Number(homeStore.pulseData.failedSourcesCount) || 0
 
   if (total === 0 && failed > 0) {
-    // All Failing
     return { label: 'Failed', pingColor: 'bg-rose-400', dotColor: 'bg-rose-500' }
   } else if (failed > 0) {
-    // Partially Failing
     return { label: 'Degraded', pingColor: 'bg-amber-400', dotColor: 'bg-amber-500' }
   } else {
-    // All Healthy
     return { label: 'Syncing', pingColor: 'bg-emerald-400', dotColor: 'bg-emerald-500' }
   }
+})
+
+// "Last received" formatted as a compact primary value (e.g. "23m") + unit ("ago")
+// Splitting value/unit lets the big number style stay on the duration and the small unit text style stay on "ago".
+const lastReceived = computed(() => {
+  const ts = homeStore.pulseData.lastSyncTimestamp
+  if (!ts) return { value: '—', unit: '' }
+  const then = new Date(ts).getTime()
+  if (isNaN(then)) return { value: '—', unit: '' }
+
+  const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000))
+  if (diffSec < 60) return { value: 'Now', unit: '' }
+
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return { value: `${diffMin}m`, unit: 'ago' }
+
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return { value: `${diffHr}h`, unit: 'ago' }
+
+  const diffDay = Math.floor(diffHr / 24)
+  if (diffDay < 30) return { value: `${diffDay}d`, unit: 'ago' }
+
+  const diffMo = Math.floor(diffDay / 30)
+  return { value: `${diffMo}mo`, unit: 'ago' }
 })
 </script>

@@ -7,12 +7,14 @@ export const useAppStore = defineStore('auth', () => {
   const isLoading = ref(false)
   const error = ref(null)
 
-  // Quick getters so you don't have to drill into session.value everywhere
+  const inFlightCount = ref(0)
+  const isGlobalLoading = computed(() => inFlightCount.value > 0)
+
   const orgXid = computed(() => session.value?.orgXid || '')
   const principalSid = computed(() => session.value?.principalSid || '')
 
   async function fetchSession() {
-    // If we already have the session, don't fetch it again
+    // If we already have the session skip loading it again
     if (session.value) return session.value
 
     isLoading.value = true
@@ -35,12 +37,24 @@ export const useAppStore = defineStore('auth', () => {
     return session.value
   }
 
+  function startLoading() {
+    inFlightCount.value += 1
+  }
+
+  function stopLoading() {
+    inFlightCount.value = Math.max(0, inFlightCount.value - 1)
+  }
+
   return { 
     session, 
     isLoading, 
     error, 
     orgXid, 
     principalSid, 
-    fetchSession 
+    fetchSession,
+    inFlightCount,
+    isGlobalLoading,
+    startLoading,
+    stopLoading
   }
 })

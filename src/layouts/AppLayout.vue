@@ -159,12 +159,11 @@
       </header>
 
       <div class="flex-1 flex overflow-hidden relative">
+        <LoadingBar />
+
         <main class="flex-1 overflow-y-auto hide-scrollbar flex flex-col">
-          
           <SystemError v-if="appStore.error" :message="appStore.error" />
-          
           <RouterView v-else />
-          
         </main>
         
         <aside 
@@ -213,6 +212,7 @@ import { useBloomUrlState } from '@/composables/useBloomUrlState'
 import Dropdown from '@/components/common/Dropdown.vue'
 import NavItem from '@/components/common/NavItem.vue'
 import FeedbackPanel from '@/components/common/FeedbackPanel.vue'
+import LoadingBar from '@/components/common/LoadingBar.vue'
 
 import HomeIcon from '@/components/icons/HomeIcon.vue'
 import DashboardIcon from '@/components/icons/DashboardIcon.vue'

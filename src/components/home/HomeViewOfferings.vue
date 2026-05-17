@@ -1,12 +1,12 @@
 <template>
   <div class="flex flex-col gap-8">
-    
+
     <div v-if="processedOfferings.length > 0" class="flex flex-col gap-4">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-bold text-slate-900">
           Active Offerings <span class="text-slate-400 font-normal ml-1">({{ processedOfferings.length }})</span>
         </h2>
-        
+
         <div v-if="totalPages > 1" class="flex items-center gap-2">
           <button @click="prevPage" :disabled="currentPage === 0" class="w-7 h-7 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-white transition-all">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -17,8 +17,8 @@
           </button>
         </div>
       </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" :class="{ 'opacity-50 transition-opacity': homeStore.isPortfolioLoading }">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4" :class="{ 'opacity-50 transition-opacity': homeStore.isPortfolioLoading }">
         <div v-for="offering in paginatedProcessed" :key="offering.offeringXid" class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group flex flex-col h-full relative overflow-hidden">
           <div class="flex items-start justify-between mb-5 gap-3">
             <div class="flex flex-col min-w-0 flex-1 pr-1">
@@ -29,7 +29,7 @@
                 {{ offering.offeringType }} &bull; LATEST: {{ offering.latestBloomKey }}
               </span>
             </div>
-            
+
             <img v-if="offering.icon" :src="offering.icon" :alt="offering.name" class="w-11 h-11 rounded-xl border border-slate-100 shadow-sm shrink-0 object-cover" />
             <div v-else class="w-11 h-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
               <span class="text-slate-400 text-xs font-bold">{{ (offering.name) ? offering.name.charAt(0) : 'X' }}</span>
@@ -57,7 +57,7 @@
             <RouterLink :to="`/${appStore.orgXid}/reports/${offering.offeringType}/${offering.offeringXid}/${offering.latestBloomType}/${offering.latestBloomKey}`" class="flex-1 py-2 text-center bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg transition-colors">
               Report
             </RouterLink>
-            
+
             <button v-if="offering.interactionsAvailable > offering.interactionsAnalyzed" class="w-full mt-2 py-2 flex items-center justify-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-colors">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
               Run Analysis ({{ formatCompactNumber(Number(offering.interactionsAvailable) - Number(offering.interactionsAnalyzed)) }} Pending)
@@ -71,8 +71,8 @@
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-bold text-slate-900">Active Offerings</h2>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div v-for="i in 4" :key="i" class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col h-full opacity-50 pointer-events-none animate-pulse">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
+        <div v-for="i in 2" :key="i" class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col h-full opacity-50 pointer-events-none animate-pulse">
           <div class="flex items-start justify-between mb-5">
             <div class="flex flex-col gap-2 w-full pr-8">
               <div class="h-5 bg-slate-200 rounded w-3/4"></div>
@@ -99,7 +99,7 @@
         <h2 class="text-sm font-bold text-slate-900">
           Awaiting Analysis <span class="text-slate-400 font-normal ml-1">({{ unprocessedOfferings.length }})</span>
         </h2>
-        
+
         <div v-if="totalPagesUnprocessed > 1" class="flex items-center gap-2">
           <button @click="prevUnprocessedPage" :disabled="currentPageUnprocessed === 0" class="w-7 h-7 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-white transition-all">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -111,7 +111,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" :class="{ 'opacity-50 transition-opacity': homeStore.isPortfolioLoading }">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4" :class="{ 'opacity-50 transition-opacity': homeStore.isPortfolioLoading }">
         <div v-for="offering in paginatedUnprocessed" :key="offering.offeringXid" class="bg-white rounded-2xl border border-dashed border-slate-300 p-6 shadow-sm flex flex-col h-full relative">
           <div class="flex items-start justify-between mb-4 gap-3">
             <div class="flex flex-col min-w-0 flex-1 pr-1">
@@ -122,7 +122,7 @@
                 {{ offering.offeringType }} &bull; No Reports Generated
               </span>
             </div>
-            
+
             <img v-if="offering.icon" :src="offering.icon" :alt="offering.name" class="w-11 h-11 rounded-xl border border-slate-100 shadow-sm shrink-0 object-cover opacity-80" />
             <div v-else class="w-11 h-11 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
               <span class="text-slate-400 text-xs font-bold">{{ (offering.name) ? offering.name.charAt(0) : 'X' }}</span>
@@ -145,12 +145,12 @@
         </div>
       </div>
     </div>
-    
+
     <div v-else-if="homeStore.isPortfolioLoading || homeStore.portfolioData.length === 0" class="flex flex-col gap-4 border-t border-slate-200 pt-6">
       <div class="flex items-center justify-between">
         <h2 class="text-sm font-bold text-slate-900">Awaiting Analysis</h2>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
         <div v-for="i in 2" :key="i" class="bg-white rounded-2xl border border-dashed border-slate-200 p-6 shadow-sm flex flex-col h-full relative opacity-50 pointer-events-none animate-pulse">
           <div class="flex items-start justify-between mb-4">
             <div class="flex flex-col gap-2 w-full pr-8">
@@ -188,7 +188,7 @@ const unprocessedOfferings = computed(() => {
 })
 
 // --- Pagination Logic (Active Offerings) ---
-const itemsPerPage = 4
+const itemsPerPage = 2
 const currentPage = ref(0)
 const totalPages = computed(() => Math.ceil(processedOfferings.value.length / itemsPerPage))
 const paginatedProcessed = computed(() => {

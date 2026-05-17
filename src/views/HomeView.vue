@@ -11,9 +11,9 @@
 
       <HomeViewStats class="mb-10" />
 
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <HomeViewMonitor class="xl:col-span-1" />
-        <HomeViewOfferings class="xl:col-span-2" />
+      <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+        <HomeViewMonitor class="lg:col-span-1" />
+        <HomeViewOfferings class="lg:col-span-1 xl:col-span-2" />
       </div>
     </div>
   </div>

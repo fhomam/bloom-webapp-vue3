@@ -10,11 +10,17 @@
     @keydown.enter.prevent="handleFlip"
     @keydown.space.prevent="handleFlip"
   >
-    <!-- Header: label + icon -->
+    <!-- Header: label (+ optional sync dot) + icon -->
     <div class="flex items-start justify-between w-full mb-2 lg:mb-3 gap-2">
-      <span class="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5 lg:mt-1 truncate">
-        {{ activeLabel }}
-      </span>
+      <div class="flex items-center gap-1.5 min-w-0 mt-0.5 lg:mt-1">
+        <span class="text-[9px] lg:text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">
+          {{ activeLabel }}
+        </span>
+        <span v-if="!isFlipped && syncStatus" class="relative flex h-1.5 w-1.5 shrink-0" :title="syncStatus.label">
+          <span :class="[syncStatus.pingColor, 'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75']"></span>
+          <span :class="[syncStatus.dotColor, 'relative inline-flex rounded-full h-1.5 w-1.5']"></span>
+        </span>
+      </div>
       <div
         :class="[
           'w-6 h-6 lg:w-8 lg:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform duration-300',
@@ -62,17 +68,12 @@
         >
           {{ change.label }}
         </span>
-
-        <!-- Sync status dot + label -->
-        <template v-if="!isFlipped && syncStatus">
-          <span class="relative flex h-1.5 w-1.5 lg:h-2 lg:w-2 self-center shrink-0 lg:translate-y-[6px] lg:ml-[-3px]">
-            <span :class="[syncStatus.pingColor, 'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75']"></span>
-            <span :class="[syncStatus.dotColor, 'relative inline-flex rounded-full h-1.5 w-1.5 lg:h-2 lg:w-2']"></span>
-          </span>
-          <span class="hidden lg:inline text-[11px] xl:text-xs font-semibold text-slate-500 -ml-0.5">
-            {{ syncStatus.label }}
-          </span>
-        </template>
+        <span
+          v-if="!isFlipped && syncStatus"
+          class="text-[10px] lg:text-[11px] xl:text-xs font-semibold text-slate-500"
+        >
+          {{ syncStatus.label }}
+        </span>
       </div>
 
       <!-- Sub-label (sm+ only; hidden on tightest mobile) -->
